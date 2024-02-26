@@ -26,6 +26,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.pgpainless:pgpainless-core:1.6.6")
     implementation("io.ktor:ktor-server-core-jvm")
     implementation("io.ktor:ktor-server-auth-jvm")
     implementation("io.ktor:ktor-server-auth-jwt-jvm")

@@ -3,6 +3,7 @@ package com.ironcrypt
 import com.ironcrypt.configuration.configureDatabases
 import com.ironcrypt.configuration.configureSerialization
 import com.ironcrypt.plugins.*
+import configureJWT
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -13,9 +14,10 @@ fun main() {
 }
 
 fun Application.module() {
-    configureSecurity()
+    configureBasic()
     configureHTTP()
     configureSerialization()
     configureDatabases()
     configureRouting()
+    configureJWT()
 }
