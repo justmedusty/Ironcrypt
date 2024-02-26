@@ -30,7 +30,7 @@ fun encryptMessage(publicKey: String, file: ByteArray): ByteArray {
     // Information about the encryption (algorithms, detached signatures etc.)
 
     // Information about the encryption (algorithms, detached signatures etc.)
-    val encryptedMessage = Base64.getEncoder().encodeToString(outputStream.toByteArray())
+    val encryptedFile = Base64.getEncoder().encodeToString(outputStream.toByteArray())
 
-    return encryptedMessage.toByteArray()
+    return encryptedFile.toByteArray()
 }

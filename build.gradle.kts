@@ -43,4 +43,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     testImplementation("io.ktor:ktor-server-tests-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("org.mindrot:jbcrypt:0.4")
+    implementation("io.github.microutils:kotlin-logging:3.0.5")
 }
