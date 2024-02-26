@@ -1,5 +1,3 @@
-package com.ironcrypt.encryption
-
 /**
  * Is valid open p g p public key
  *
