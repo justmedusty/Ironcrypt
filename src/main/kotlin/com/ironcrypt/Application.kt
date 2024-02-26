@@ -1,9 +1,10 @@
 package com.ironcrypt
 
+import com.ironcrypt.auth.configureBasic
 import com.ironcrypt.configuration.configureDatabases
 import com.ironcrypt.configuration.configureSerialization
 import com.ironcrypt.plugins.*
-import configureJWT
+import com.ironcrypt.auth.configureJWT
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
