@@ -1,3 +1,5 @@
+package com.ironcrypt.encryption
+
 import org.bouncycastle.openpgp.PGPPublicKeyRing
 import org.bouncycastle.util.io.Streams
 import org.pgpainless.PGPainless
@@ -8,8 +10,7 @@ import org.pgpainless.encryption_signing.ProducerOptions
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.*
-
-fun encryptMessage(publicKey: String, file: ByteArray): ByteArray {
+fun encryptFile(publicKey: String, file: ByteArray): ByteArray {
     val outputStream = ByteArrayOutputStream()
 
     // Parse the publicKey String to a PGPPublicKeyRing
