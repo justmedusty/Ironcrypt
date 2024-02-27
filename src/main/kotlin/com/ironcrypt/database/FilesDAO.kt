@@ -48,16 +48,19 @@ fun verifyUsersSpace(ownerId: Int): Boolean {
 }
 
 fun uploadFile(ownerId: Int, fileName: String, encryptedFile: ByteArray) {
-    if (fileName.toCharArray().size > 255) {
-        throw IllegalArgumentException()
+    if (fileName.toCharArray().size > 255 || encryptedFile.size > Maximums.MAX_FILE_SIZE_BYTES.value) {
+        logger.error { "Exceeded maximum filesize or file name length" }
+        throw IllegalArgumentException("Exceeded maximum filesize or file name length")
     } else {
         if (verifyUsersSpace(ownerId)) {
+            val fileSizeBytes = encryptedFile.size
             try {
                 transaction {
                     Files.insert {
                         it[Files.ownerId] = ownerId
                         it[Files.fileName] = fileName
                         it[Files.encryptedFile] = ExposedBlob(encryptedFile)
+                        it[Files.fileSizeBytes] = fileSizeBytes
                     }
                 }
             } catch (e: Exception) {
@@ -79,7 +82,24 @@ fun deleteFile(fileId: Int) {
             }
         }
     } catch (e: Exception) {
-        logger.error { e }
+        logger.error {"Error deleting file : ${e.message}" }
     }
+}
+
+fun getOwnerId(fileId: Int): Int? {
+    try {
+        val ownerId = transaction {
+            Files.select { Files.id eq fileId }.singleOrNull()?.get(Files.ownerId)
+        }
+        if (ownerId != null) {
+            return ownerId
+        }
+        return null
+    } catch (e: Exception) {
+        logger.error { "Error getting ownerId from checking File Table :  ${e.message}" }
+        return null
+    }
+
+
 }
 
