@@ -18,16 +18,13 @@ fun encryptMessage(publicKey: String, file: ByteArray): ByteArray {
 
     val encryptionStream: EncryptionStream = PGPainless.encryptAndOrSign().onOutputStream(outputStream).withOptions(
         ProducerOptions.encrypt(
-            EncryptionOptions().addRecipient(publicKeyObj)
-                .overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_192),
+            EncryptionOptions().addRecipient(publicKeyObj).overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_192),
 
             ).setAsciiArmor(true), // Ascii armor or not
     )
 
     Streams.pipeAll(plaintextInputStream, encryptionStream)
     encryptionStream.close()
-
-    // Information about the encryption (algorithms, detached signatures etc.)
 
     // Information about the encryption (algorithms, detached signatures etc.)
     val encryptedFile = Base64.getEncoder().encodeToString(outputStream.toByteArray())

@@ -181,6 +181,18 @@ fun getUserName(id: String?): String? {
     }
 }
 
+fun getPublicKey(userName: String): String? {
+    return try {
+        transaction {
+            val result = Users.select { Users.userName eq userName }.singleOrNull()
+            result?.get(Users.publicKey)
+        }
+    } catch (e: Exception) {
+        logger.error { "Error getting public key $e" }
+        return null
+    }
+}
+
 fun updatePublicKey(userName: String, newPublicKey: String): Boolean {
     return try {
         if (publicKeyAlreadyExists(newPublicKey)) {

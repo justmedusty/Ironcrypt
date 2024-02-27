@@ -9,7 +9,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 object Files : Table(name = "Files") {
     val id: Column<Int> = integer("id").autoIncrement()
     val ownerId: Column<Int> = integer("owner_id").references(Users.id, onDelete = ReferenceOption.CASCADE)
-    val fileName: Column<String> = varchar("fileName", 200)
+    val fileName: Column<String> = varchar("fileName", 255)
     val encryptedFile: Column<ExposedBlob> = blob("encrypted_file")
     val fileSizeBytes: Column<Int> = integer("file_size_bytes")
 
@@ -48,7 +48,7 @@ fun verifyUsersSpace(ownerId: Int): Boolean {
 }
 
 fun uploadFile(ownerId: Int, fileName: String, encryptedFile: ByteArray) {
-    if (fileName.toCharArray().size > 150) {
+    if (fileName.toCharArray().size > 255) {
         throw IllegalArgumentException()
     } else {
         if (verifyUsersSpace(ownerId)) {
