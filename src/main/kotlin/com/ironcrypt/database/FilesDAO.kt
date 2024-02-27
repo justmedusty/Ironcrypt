@@ -1,6 +1,7 @@
 package com.ironcrypt.database
 
 import com.ironcrypt.enums.Maximums
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
@@ -18,7 +19,7 @@ object Files : Table(name = "Files") {
 }
 
 data class File(
-    val ownerId: Int, val encryptedFile: ByteArray
+    val ownerId: Int, val encryptedFile: ByteArray, val fileName: String, val fileSizeBytes: Int
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -40,11 +41,16 @@ data class File(
 }
 
 fun verifyUsersSpace(ownerId: Int): Boolean {
-    val spaceUsed = transaction {
-        Files.select { Files.ownerId eq ownerId }.sumOf { it[Files.fileSizeBytes] }
+    try {
+        val spaceUsed = transaction {
+            Files.select { Files.ownerId eq ownerId }.sumOf { it[Files.fileSizeBytes] }
+        }
+
+        return spaceUsed <= Maximums.MAX_USER_SPACE_BYTES.value
+    } catch (e: ExposedSQLException) {
+        return false
     }
 
-    return spaceUsed <= Maximums.MAX_USER_SPACE_BYTES.value
 }
 
 fun uploadFile(ownerId: Int, fileName: String, encryptedFile: ByteArray) {
@@ -63,7 +69,7 @@ fun uploadFile(ownerId: Int, fileName: String, encryptedFile: ByteArray) {
                         it[Files.fileSizeBytes] = fileSizeBytes
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: ExposedSQLException) {
                 logger.error { e }
             }
         } else {
@@ -81,8 +87,8 @@ fun deleteFile(fileId: Int) {
                 id eq fileId
             }
         }
-    } catch (e: Exception) {
-        logger.error {"Error deleting file : ${e.message}" }
+    } catch (e: ExposedSQLException) {
+        logger.error { "Error deleting file : ${e.message}" }
     }
 }
 
@@ -95,8 +101,41 @@ fun getOwnerId(fileId: Int): Int? {
             return ownerId
         }
         return null
-    } catch (e: Exception) {
+    } catch (e: ExposedSQLException) {
         logger.error { "Error getting ownerId from checking File Table :  ${e.message}" }
+        return null
+    }
+
+
+}
+
+fun downloadFile(fileId: Int): ByteArray? {
+    try {
+        return transaction {
+            Files.select { Files.id eq fileId }.singleOrNull()
+
+        }?.let { row ->
+            row[Files.encryptedFile].bytes
+        }
+
+    } catch (e: ExposedSQLException) {
+        logger.error { "Error getting file from fileId : ${e.message}" }
+        return null
+    }
+
+}
+
+fun getAllFiles(ownerId: Int): List<File>? {
+    return try {
+        transaction {
+            Files.select { Files.ownerId eq ownerId }.map {
+                File(
+                    it[Files.ownerId], encryptedFile = ByteArray(0), it[Files.fileName], it[Files.fileSizeBytes]
+                )
+            }
+        }
+    } catch (e: ExposedSQLException) {
+        logger.error { "Error fetching files ${e.message}" }
         return null
     }
 

@@ -87,7 +87,39 @@ fun Application.configureFileManagementRouting() {
                     call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid file ID or owner ID"))
                 }
             }
+            /*
+            get("/ironcrypt/file/download/{fileId}"){
+                val fileId = call.parameters["fileId"]?.toIntOrNull()
+                val ownerId: Int? = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
+                if (fileId != null && ownerId != null) {
+                    val fileOwnerId: Int? = getOwnerId(fileId)
+                    if (fileOwnerId == ownerId) {
+                        val file: File? = getFile(fileId)
+                        if (file != null) {
+                            val decryptedFile: ByteArray = decryptFile(file.encryptedFile)
+                            call.respondBytes(
+                                decryptedFile,
+                                ContentType.Application.OctetStream,
+                                ContentDisposition.Attachment.withParameter(ContentDisposition.Parameters.FileName, file.fileName)
+                            )
+                        } else {
+                            call.respond(HttpStatusCode.NotFound, mapOf("Response" to "File not found"))
+                        }
+                    } else {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            mapOf("Response" to "You are not authorized to download this file")
+                        )
+                    }
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid file ID or owner ID"))
+                }
+
+            }
+             */
         }
+
+
     }
 }
 
