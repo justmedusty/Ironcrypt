@@ -9,7 +9,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.*
 
-fun encryptMessage(publicKey: String, file: ByteArray): ByteArray {
+fun encryptFile(publicKey: String, file: ByteArray): ByteArray {
     val outputStream = ByteArrayOutputStream()
 
     // Parse the publicKey String to a PGPPublicKeyRing
