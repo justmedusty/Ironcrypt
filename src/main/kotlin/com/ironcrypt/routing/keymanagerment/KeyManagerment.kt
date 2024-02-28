@@ -39,7 +39,7 @@ fun Application.configureKeyManagementRouting() {
 
                 val userId = id?.toIntOrNull()
                 if (userId != null) {
-                    val publicKey = getPublicKey(getUserName(userId.toString()).toString())
+                    val publicKey = getPublicKey(userId)
                     call.respond(HttpStatusCode.OK, mapOf("Response" to "$publicKey"))
                 } else {
                     call.respond(HttpStatusCode.Conflict, mapOf("Response" to "No Id Found"))
