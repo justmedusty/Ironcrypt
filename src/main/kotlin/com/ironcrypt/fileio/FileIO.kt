@@ -81,9 +81,6 @@ suspend fun fileDownload(call: ApplicationCall) {
 
 }
 
-
-}
-
 fun createUserDir(userID: Int) {
     val directoryPath = "/var/ironcrypt/$userID"
 
