@@ -1,18 +1,14 @@
 package com.ironcrypt.routing.filemanagement
 
-import com.ironcrypt.database.*
-import com.ironcrypt.enums.Maximums
+import com.ironcrypt.database.deleteFile
+import com.ironcrypt.database.getOwnerId
 import com.ironcrypt.enums.Maximums.MAX_FILE_NAME_CHAR_LENGTH
-import encryptFile
 import io.ktor.http.*
-import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
-import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.utils.io.errors.*
 
 private fun validateFileName(originalFileName: String?): String =
     originalFileName?.takeUnless { it.length > MAX_FILE_NAME_CHAR_LENGTH.value } ?: ("file" + System.currentTimeMillis()
@@ -22,6 +18,7 @@ private fun validateFileName(originalFileName: String?): String =
 fun Application.configureFileManagementRouting() {
     routing {
         authenticate("jwt") {
+            /*
             post("/ironcrypt/file/upload") {
                 val multiPartData = call.receiveMultipart()
                 val ownerId = this.call.principal<JWTPrincipal>()?.payload?.subject
@@ -54,8 +51,7 @@ fun Application.configureFileManagementRouting() {
                 }
                 if (fileBytes != null && (fileBytes?.size!! > Maximums.MAX_FILE_SIZE_BYTES.value)) {
                     call.respond(
-                        HttpStatusCode.BadRequest,
-                        mapOf("Response" to "File exceeds maximum allowed size (1GB)")
+                        HttpStatusCode.BadRequest, mapOf("Response" to "File exceeds maximum allowed size (1GB)")
                     )
                 }
                 if (fileName != null && fileBytes != null && ownerId != null && userPublicKey != null) {
@@ -67,41 +63,42 @@ fun Application.configureFileManagementRouting() {
                 } else {
                     call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Missing file or file name"))
                 }
-
-            }
-            delete("/ironcrypt/file/delete/{fileId}") {
-                val fileId = call.parameters["fileId"]?.toIntOrNull()
-                val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
-                if (fileId != null && ownerId != null) {
-                    val fileOwnerId: Int? = getOwnerId(fileId)
-                    if (fileOwnerId == ownerId) {
-                        deleteFile(fileId)
-                        call.respond(HttpStatusCode.OK, mapOf("Response" to "File Deleted Successfully"))
-                    } else {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            mapOf("Response" to "You are not authorized to delete this file")
-                        )
-                    }
+*/
+        }
+        delete("/ironcrypt/file/delete/{fileId}") {
+            val fileId = call.parameters["fileId"]?.toIntOrNull()
+            val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
+            if (fileId != null && ownerId != null) {
+                val fileOwnerId: Int? = getOwnerId(fileId)
+                if (fileOwnerId == ownerId) {
+                    deleteFile(fileId)
+                    call.respond(HttpStatusCode.OK, mapOf("Response" to "File Deleted Successfully"))
                 } else {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid file ID or owner ID"))
+                    call.respond(
+                        HttpStatusCode.BadRequest, mapOf("Response" to "You are not authorized to delete this file")
+                    )
                 }
+            } else {
+                call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid file ID or owner ID"))
             }
-            /*
+        }/*
             get("/ironcrypt/file/download/{fileId}"){
                 val fileId = call.parameters["fileId"]?.toIntOrNull()
                 val ownerId: Int? = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
                 if (fileId != null && ownerId != null) {
                     val fileOwnerId: Int? = getOwnerId(fileId)
                     if (fileOwnerId == ownerId) {
-                        val file: File? = getFile(fileId)
+                        val file: File? = getFileData(fileId)
                         if (file != null) {
-                            val decryptedFile: ByteArray = decryptFile(file.encryptedFile)
-                            call.respondBytes(
-                                decryptedFile,
-                                ContentType.Application.OctetStream,
-                                ContentDisposition.Attachment.withParameter(ContentDisposition.Parameters.FileName, file.fileName)
-                            )
+                            val fileBytes: ByteArray? = downloadFile(fileId)
+                            if (fileBytes != null) {
+                                call.respondBytes(fileBytes, ContentType.Application.OctetStream, file.fileName)
+                            } else {
+                                call.respond(HttpStatusCode.NotFound, mapOf("Response" to "File not found"))
+                            }
+
+                            }
+                        }
                         } else {
                             call.respond(HttpStatusCode.NotFound, mapOf("Response" to "File not found"))
                         }
@@ -116,10 +113,10 @@ fun Application.configureFileManagementRouting() {
                 }
 
             }
-             */
-        }
-
-
+*/
     }
+
+
 }
+
 

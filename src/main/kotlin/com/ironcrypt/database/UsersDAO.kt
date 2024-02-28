@@ -31,6 +31,7 @@ data class User(
     val userName: String,
     val publicKey: String,
     val passwordHash: String,
+    val overLimit : Boolean
 )
 
 /**
@@ -181,10 +182,10 @@ fun getUserName(id: String?): String? {
     }
 }
 
-fun getPublicKey(userName: String): String? {
+fun getPublicKey(userId: Int): String? {
     return try {
         transaction {
-            val result = Users.select { Users.userName eq userName }.singleOrNull()
+            val result = Users.select { Users.id eq userId }.singleOrNull()
             result?.get(Users.publicKey)
         }
     } catch (e: Exception) {

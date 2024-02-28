@@ -1,33 +1,30 @@
+package com.ironcrypt.encryption
+
 import org.bouncycastle.openpgp.PGPPublicKeyRing
-import org.bouncycastle.util.io.Streams
 import org.pgpainless.PGPainless
 import org.pgpainless.algorithm.SymmetricKeyAlgorithm
 import org.pgpainless.encryption_signing.EncryptionOptions
 import org.pgpainless.encryption_signing.EncryptionStream
 import org.pgpainless.encryption_signing.ProducerOptions
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.*
+import java.io.InputStream
+import java.io.OutputStream
 
-fun encryptFile(publicKey: String, file: ByteArray): ByteArray {
-    val outputStream = ByteArrayOutputStream()
-
+fun encryptFileStream(publicKey: String, inputStream: InputStream, outputStream: OutputStream) {
     // Parse the publicKey String to a PGPPublicKeyRing
     val publicKeyObj: PGPPublicKeyRing = PGPainless.readKeyRing().publicKeyRing(publicKey)!!
-    val plaintextInputStream = ByteArrayInputStream(file)
 
+    // Create an EncryptionStream
     val encryptionStream: EncryptionStream = PGPainless.encryptAndOrSign().onOutputStream(outputStream).withOptions(
-        ProducerOptions.encrypt(
-            EncryptionOptions().addRecipient(publicKeyObj).overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_192),
+            ProducerOptions.encrypt(
+                EncryptionOptions().addRecipient(publicKeyObj)
+                    .overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_192)
+            ).setAsciiArmor(true)
+        ) // Ascii armor or not
 
-            ).setAsciiArmor(true), // Ascii armor or not
-    )
-
-    Streams.pipeAll(plaintextInputStream, encryptionStream)
-    encryptionStream.close()
-
-    // Information about the encryption (algorithms, detached signatures etc.)
-    val encryptedFile = Base64.getEncoder().encodeToString(outputStream.toByteArray())
-
-    return encryptedFile.toByteArray()
+    // Pipe the input stream to the encryption stream
+    inputStream.use { input ->
+        encryptionStream.use { encryption ->
+            input.copyTo(encryption)
+        }
+    }
 }
