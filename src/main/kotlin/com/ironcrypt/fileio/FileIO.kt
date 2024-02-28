@@ -46,6 +46,7 @@ suspend fun fileUpload(call: ApplicationCall) {
             encryptFileStream(publicKey, filePath.inputStream(), encryptedOutputStream)
             withContext(Dispatchers.IO) {
                 Files.write(filePath, encryptedOutputStream.toByteArray())
+
             }
             call.respond(HttpStatusCode.OK, mapOf("Response" to "File Upload Success!"))
         } else {
@@ -117,11 +118,13 @@ fun deleteUserDir(userID: Int) {
 
 suspend fun overLimit(inputStream: InputStream): Boolean {
     val byteLimit = Maximums.MAX_FILE_SIZE_BYTES.value
-    var totalSize: Int = 0
-    val buffer = ByteArray(4096) // Adjust buffer size as needed
+    var totalSize = 0
+    val buffer = ByteArray(4096)
 
     var bytesRead: Int
-    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+    while (withContext(Dispatchers.IO) {
+            inputStream.read(buffer)
+        }.also { bytesRead = it } != -1) {
         totalSize += bytesRead
        if (totalSize > byteLimit){
          return true
