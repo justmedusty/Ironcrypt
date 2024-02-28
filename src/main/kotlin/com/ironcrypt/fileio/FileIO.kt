@@ -9,6 +9,8 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.utils.io.errors.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.*
@@ -39,11 +41,19 @@ suspend fun fileUpload(call: ApplicationCall) {
         if (publicKey != null) {
             val encryptedOutputStream = ByteArrayOutputStream()
             encryptFileStream(publicKey, filePath.inputStream(), encryptedOutputStream)
-            call.respondBytes(encryptedOutputStream.toByteArray(), ContentType.Application.OctetStream)
+            withContext(Dispatchers.IO) {
+                Files.write(filePath, encryptedOutputStream.toByteArray())
+            }
+            call.respond(HttpStatusCode.OK, mapOf("Response" to "File Upload Success!"))
+           // call.respondBytes(encryptedOutputStream.toByteArray(), ContentType.Application.OctetStream)
         } else {
-            call.respond(HttpStatusCode.BadRequest, "Invalid request parameters")
+            call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid request parameters"))
         }
     }
+}
+
+suspend fun fileDownload(call : ApplicationCall){
+
 }
 
 fun createUserDir(userID: Int) {
