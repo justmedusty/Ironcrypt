@@ -3,6 +3,7 @@ package com.ironcrypt.fileio
 import com.ironcrypt.database.getFileData
 import com.ironcrypt.database.getPublicKey
 import com.ironcrypt.encryption.encryptFileStream
+import com.ironcrypt.enums.Maximums
 import com.ironcrypt.enums.Pathing
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -14,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.inputStream
@@ -33,7 +35,7 @@ suspend fun fileUpload(call: ApplicationCall) {
     if (filePart != null && fileName != null && userID != null) {
         val directory = File(Pathing.USER_FILE_DIRECTORY.value + "$userID")
         if (!directory.exists()) {
-            directory.mkdirs()
+            createUserDir(userID)
         }
 
         val filePath = Paths.get(directory.absolutePath, fileName)
@@ -110,4 +112,23 @@ fun deleteUserDir(userID: Int) {
     } catch (e: IOException) {
         e.printStackTrace()
     }
+}
+
+
+suspend fun overLimit(inputStream: InputStream): Boolean {
+    val byteLimit = Maximums.MAX_FILE_SIZE_BYTES.value
+    var totalSize: Int = 0
+    val buffer = ByteArray(4096) // Adjust buffer size as needed
+
+    var bytesRead: Int
+    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+        totalSize += bytesRead
+       if (totalSize > byteLimit){
+         return true
+
+
+       }
+    }
+
+    return totalSize > byteLimit
 }
