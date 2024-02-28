@@ -1,5 +1,6 @@
 package com.ironcrypt.fileio
 
+import com.ironcrypt.database.getFileData
 import com.ironcrypt.database.getPublicKey
 import com.ironcrypt.encryption.encryptFileStream
 import com.ironcrypt.enums.Pathing
@@ -45,14 +46,41 @@ suspend fun fileUpload(call: ApplicationCall) {
                 Files.write(filePath, encryptedOutputStream.toByteArray())
             }
             call.respond(HttpStatusCode.OK, mapOf("Response" to "File Upload Success!"))
-           // call.respondBytes(encryptedOutputStream.toByteArray(), ContentType.Application.OctetStream)
         } else {
             call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid request parameters"))
         }
     }
 }
 
-suspend fun fileDownload(call : ApplicationCall){
+suspend fun fileDownload(call: ApplicationCall) {
+    val parameters = call.parameters
+    val fileID = parameters["fileId"]?.toIntOrNull()
+    if (fileID != null) {
+        val fileMetaData: com.ironcrypt.database.File? = getFileData(fileID)
+        val directory = File(Pathing.USER_FILE_DIRECTORY.value + "$fileMetaData.userID")
+        if (!directory.exists()) {
+            directory.mkdirs()
+        }
+        val filePath: Path? = Paths.get(directory.absolutePath, fileID.toString())
+        if (filePath != null && Files.exists(filePath)) {
+            withContext(Dispatchers.IO) {
+
+                Files.newInputStream(filePath).use { inputStream ->
+                    call.respondOutputStream(ContentType.Application.OctetStream, HttpStatusCode.OK) {
+                        inputStream.copyTo(this)
+                    }
+                }
+            }
+
+        } else call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Could not find file at specified path"))
+
+    } else run {
+        call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid request parameters"))
+    }
+
+
+}
+
 
 }
 
