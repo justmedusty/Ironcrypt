@@ -17,7 +17,7 @@ object Files : Table(name = "Files") {
 }
 
 data class File(
-    val fileId: Int, val ownerId: Int, val fileName: String,  val fileSizeBytes: Int
+    val fileId: Int, val ownerId: Int, val fileName: String, val fileSizeBytes: Int
 )
 
 fun verifyUsersSpace(ownerId: Int): Boolean {
@@ -31,14 +31,14 @@ fun verifyUsersSpace(ownerId: Int): Boolean {
         return false
     }
 
-}/*
+}
+
 fun uploadFile(ownerId: Int, fileName: String, fileSizeBytes: Int) {
     if (fileName.toCharArray().size > 255) {
         logger.error { "Exceeded maximum filesize or file name length" }
         throw IllegalArgumentException("Exceeded maximum filesize or file name length")
     } else {
         if (verifyUsersSpace(ownerId)) {
-            val fileSizeBytes = encryptedFile.size
             try {
                 transaction {
                     Files.insert {
@@ -57,7 +57,7 @@ fun uploadFile(ownerId: Int, fileName: String, fileSizeBytes: Int) {
     }
 
 }
- */
+
 
 fun deleteFile(fileId: Int) {
     try {
@@ -94,10 +94,7 @@ fun getAllFiles(ownerId: Int): List<File>? {
         transaction {
             Files.select { Files.ownerId eq ownerId }.map {
                 File(
-                    it[Files.id],
-                    it[Files.ownerId],
-                    it[Files.fileName],
-                    it[Files.fileSizeBytes]
+                    it[Files.id], it[Files.ownerId], it[Files.fileName], it[Files.fileSizeBytes]
                 )
             }
         }
@@ -114,10 +111,7 @@ fun getFileData(fileId: Int): File? {
         transaction {
             Files.select { Files.id eq fileId }.singleOrNull()?.let { row: ResultRow ->
                 File(
-                    row[Files.id],
-                    row[Files.ownerId],
-                    row[Files.fileName],
-                    row[Files.fileSizeBytes]
+                    row[Files.id], row[Files.ownerId], row[Files.fileName], row[Files.fileSizeBytes]
                 )
             }
         }

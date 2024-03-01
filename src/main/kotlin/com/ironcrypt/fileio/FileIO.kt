@@ -1,13 +1,17 @@
 package com.ironcrypt.fileio
 
 import com.ironcrypt.database.getFileData
+import com.ironcrypt.database.getOwnerId
 import com.ironcrypt.database.getPublicKey
+import com.ironcrypt.database.logger
 import com.ironcrypt.encryption.encryptFileStream
 import com.ironcrypt.enums.Maximums
 import com.ironcrypt.enums.Pathing
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.utils.io.errors.*
@@ -20,29 +24,35 @@ import java.nio.file.*
 import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.inputStream
 
-fun fileDownload() {
-
-}
 
 suspend fun fileUpload(call: ApplicationCall) {
+    val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
     val parameters = call.receiveMultipart().readAllParts().associateBy({ it.name ?: "" }, { it })
+    val contentLength = call.request.contentLength()
 
     val filePart = parameters["file"]
     val fileName = parameters["fileName"]?.let { part -> (part as? PartData.FormItem)?.value }
-    val userID = parameters["userID"]?.let { part -> (part as? PartData.FormItem)?.value }?.toIntOrNull()
 
 
-    if (filePart != null && fileName != null && userID != null) {
-        val directory = File(Pathing.USER_FILE_DIRECTORY.value + "$userID")
+    if (filePart != null && fileName != null && ownerId != null) {
+
+        val directory = File(Pathing.USER_FILE_DIRECTORY.value + "$ownerId")
+
         if (!directory.exists() && !directory.mkdirs()) {
             call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to "Failed to create user directory"))
             return
         }
 
         val filePath = Paths.get(directory.absolutePath, fileName)
-        val publicKey = getPublicKey(userID)
+
+        val publicKey = getPublicKey(ownerId)
+
+        if (contentLength != null && contentLength > Maximums.MAX_FILE_SIZE_BYTES.value) {
+            call.respond(HttpStatusCode.BadRequest, "File too large (Max 1GB)")
+        }
 
         if (publicKey != null) {
+
             try {
                 val encryptedOutputStream = ByteArrayOutputStream()
                 encryptFileStream(publicKey, filePath.inputStream(), encryptedOutputStream)
@@ -50,6 +60,7 @@ suspend fun fileUpload(call: ApplicationCall) {
                     Files.write(filePath, encryptedOutputStream.toByteArray())
                 }
             } catch (e: Exception) {
+                logger.error { "Error on file upload, deleting what was downloaded{$e.message}" }
                 val file = File(filePath.toString())
                 if (file.exists()) {
                     file.delete()
@@ -68,9 +79,15 @@ suspend fun fileUpload(call: ApplicationCall) {
 }
 
 suspend fun fileDownload(call: ApplicationCall) {
+    val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
     val parameters = call.parameters
     val fileID = parameters["fileId"]?.toIntOrNull()
     if (fileID != null) {
+        val fileOwner = getOwnerId(fileID)
+        val isOwner: Boolean = (fileOwner == ownerId)
+        if (!isOwner) {
+            call.respond(HttpStatusCode.Unauthorized, mapOf("Response" to "You do not own this file"))
+        }
         val fileMetaData: com.ironcrypt.database.File? = getFileData(fileID)
         val directory = File(Pathing.USER_FILE_DIRECTORY.value + "$fileMetaData.userID")
         if (!directory.exists()) {
@@ -79,13 +96,13 @@ suspend fun fileDownload(call: ApplicationCall) {
         val filePath: Path? = Paths.get(directory.absolutePath, fileID.toString())
         if (filePath != null && Files.exists(filePath)) {
             withContext(Dispatchers.IO) {
-                try{
+                try {
                     Files.newInputStream(filePath).use { inputStream ->
                         call.respondOutputStream(ContentType.Application.OctetStream, HttpStatusCode.OK) {
                             inputStream.copyTo(this)
                         }
                     }
-                }catch (e: Exception){
+                } catch (e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to "Failed to download file"))
                 }
 
@@ -100,11 +117,11 @@ suspend fun fileDownload(call: ApplicationCall) {
 
 }
 
-fun createUserDir(userID: Int) {
+fun createUserDir(userID: Int): Boolean {
     val directoryPath = "/var/ironcrypt/$userID"
 
     val newUserDirectory = File(directoryPath)
-    newUserDirectory.mkdirs()
+    return newUserDirectory.mkdirs()
 }
 
 
@@ -131,6 +148,35 @@ fun deleteUserDir(userID: Int) {
     }
 }
 
+suspend fun fileDeletion(call: ApplicationCall) {
+    val params = call.parameters
+    val fileID: Int? = params["fileId"]?.toIntOrNull()
+    val ownerId: Int? = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
+    val filePath = Pathing.USER_FILE_DIRECTORY.value + "/$ownerId/$fileID"
+
+    if (ownerId != null && fileID != null) {
+
+        val fileOwner = getOwnerId(fileID)
+
+        if (fileOwner != ownerId) {
+            call.respond(HttpStatusCode.Unauthorized, mapOf("Response" to "You do not own this file"))
+            return
+        }
+        else{
+            withContext(Dispatchers.IO) {
+                try{
+                    Files.delete(Path.of(filePath))
+                    call.respond(HttpStatusCode.OK, mapOf("Response" to "File deleted successfully"))
+                }catch (e:Exception){
+                    logger.error { "Error deleting file, ${e.message}" }
+                    call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to "Error deleting file"))
+                }
+
+            }
+        }
+
+    }
+}
 
 suspend fun overLimit(inputStream: InputStream): Boolean {
     val byteLimit = Maximums.MAX_FILE_SIZE_BYTES.value
