@@ -53,14 +53,14 @@ private suspend fun handleFileUpload(call: ApplicationCall, ownerId: Int, fileNa
     val filePath = Paths.get(directory.absolutePath, fileName)
     val publicKey = getPublicKey(ownerId)
     val contentLength = call.request.contentLength()
-    if (contentLength != null && contentLength > Maximums.MAX_FILE_SIZE_BYTES.value) {
+    if (contentLength != null && contentLength > Maximums.MAX_FILE_SIZE_BYTES.value.toLong()) {
         call.respond(HttpStatusCode.BadRequest, FILE_TOO_LARGE)
         return
     }
 
     if (publicKey != null) {
         if (contentLength != null) {
-            saveFileToDirectory(call, ownerId, filePath, publicKey, fileName, contentLength.toInt())
+            saveFileToDirectory(call, ownerId, filePath, publicKey, fileName, contentLength)
         }
     } else {
         call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_PARAM))
@@ -68,15 +68,13 @@ private suspend fun handleFileUpload(call: ApplicationCall, ownerId: Int, fileNa
 }
 
 private suspend fun saveFileToDirectory(
-    call: ApplicationCall, ownerId: Int, filePath: Path, publicKey: String, fileName: String, contentLength: Int?
+    call: ApplicationCall, ownerId: Int, filePath: Path, publicKey: String, fileName: String, contentLength: Long
 ) {
     try {
         val encryptedOutputStream = ByteArrayOutputStream()
         encryptFileStream(publicKey, filePath.inputStream(), encryptedOutputStream)
         writeEncryptedFile(filePath, encryptedOutputStream)
-        if (contentLength != null) {
-            addFileData(ownerId, fileName, contentLength.toInt())
-        }
+        addFileData(ownerId, fileName, contentLength.toInt())
     } catch (e: Exception) {
         logger.error { "Error on file upload, deleting what was downloaded{$e.message}" }
         val file = File(filePath.toString())
