@@ -11,20 +11,24 @@ import java.io.OutputStream
 
 fun encryptFileStream(publicKey: String, inputStream: InputStream, outputStream: OutputStream) {
     // Parse the publicKey String to a PGPPublicKeyRing
-    val publicKeyObj: PGPPublicKeyRing = PGPainless.readKeyRing().publicKeyRing(publicKey)!!
 
-    // Create an EncryptionStream
-    val encryptionStream: EncryptionStream = PGPainless.encryptAndOrSign().onOutputStream(outputStream).withOptions(
+    val publicKeyObj: PGPPublicKeyRing? = PGPainless.readKeyRing().publicKeyRing(publicKey)
+
+    if (publicKeyObj != null) {
+        val encryptionStream: EncryptionStream = PGPainless.encryptAndOrSign().onOutputStream(outputStream).withOptions(
             ProducerOptions.encrypt(
                 EncryptionOptions().addRecipient(publicKeyObj)
                     .overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_192)
             ).setAsciiArmor(false)
-        ) // Ascii armor or not
+        )
 
-    // Pipe the input stream to the encryption stream
-    inputStream.use { input ->
-        encryptionStream.use { encryption ->
-            input.copyTo(encryption)
+        // Pipe the input stream to the encryption stream
+        inputStream.use { input ->
+            encryptionStream.use { encryption ->
+                input.copyTo(encryption)
+            }
         }
     }
+
+
 }

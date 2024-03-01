@@ -9,7 +9,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 object Files : Table(name = "Files") {
     val id: Column<Int> = integer("id").autoIncrement()
     val ownerId: Column<Int> = integer("owner_id").references(Users.id, onDelete = ReferenceOption.CASCADE)
-    val fileName: Column<String> = varchar("fileName", 255)
+    val fileName: Column<String> = varchar("fileName", 500)
     val fileSizeBytes: Column<Int> = integer("file_size_bytes")
 
     override val primaryKey = PrimaryKey(id)
@@ -33,8 +33,8 @@ fun verifyUsersSpace(ownerId: Int): Boolean {
 
 }
 
-fun uploadFile(ownerId: Int, fileName: String, fileSizeBytes: Int) {
-    if (fileName.toCharArray().size > 255) {
+fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int) {
+    if (fileName.toCharArray().size > 500) {
         logger.error { "Exceeded maximum filesize or file name length" }
         throw IllegalArgumentException("Exceeded maximum filesize or file name length")
     } else {

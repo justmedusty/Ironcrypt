@@ -1,4 +1,5 @@
 import com.ironcrypt.database.*
+import com.ironcrypt.fileio.deleteUserDir
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -67,6 +68,7 @@ fun Application.configureProfileChangeRoutes() {
                 val userId = id?.toIntOrNull()
                 if (userId != null) {
                     deleteUser(userId)
+                    deleteUserDir(userId)
                     call.respond(HttpStatusCode.OK, mapOf("Response" to "Account Deleted"))
                     logger.info { "user with id : $id deleted account" }
                 } else {

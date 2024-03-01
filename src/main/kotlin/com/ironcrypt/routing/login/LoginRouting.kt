@@ -2,6 +2,7 @@ import com.ironcrypt.database.User
 import com.ironcrypt.database.createUser
 import com.ironcrypt.database.getUserId
 import com.ironcrypt.database.userNameAlreadyExists
+import com.ironcrypt.fileio.createUserDir
 import com.ironcrypt.security.JWTConfig
 import com.ironcrypt.security.createJWT
 import io.ktor.http.*
@@ -47,7 +48,7 @@ fun Application.configureLogin() {
         }
         post("/ironcrypt/signup") {
             val signup = call.receive<Signup>()
-            val user = User(signup.userName, null.toString(), signup.password)
+            val user = User(signup.userName, null.toString(), signup.password, false)
             when {
                 user.userName.length < 6 || user.userName.length > 45 -> {
                     call.respond(
@@ -65,6 +66,7 @@ fun Application.configureLogin() {
 
                 else -> {
                     createUser(user)
+                    createUserDir(getUserId(user.userName))
                     call.respond(HttpStatusCode.OK, mapOf("Response" to "Successfully created your account"))
                 }
             }

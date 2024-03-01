@@ -16,19 +16,21 @@ private fun validateFileName(originalFileName: String?): String =
 fun Application.configureFileManagementRouting() {
     routing {
         authenticate("jwt") {
+
+
             post("/ironcrypt/file/upload") {
                 fileUpload(this.call)
             }
+
+            delete("/ironcrypt/file/delete/{fileId}") {
+                fileDeletion(this.call)
+            }
+            get("/ironcrypt/file/download/{fileId}") {
+                fileDownload(this.call)
+            }
         }
-        delete("/ironcrypt/file/delete/{fileId}") {
-            fileDeletion(this.call)
-        }
-        get("/ironcrypt/file/download/{fileId}") {
-            fileDownload(this.call)
-        }
+
     }
-
-
 }
 
 
