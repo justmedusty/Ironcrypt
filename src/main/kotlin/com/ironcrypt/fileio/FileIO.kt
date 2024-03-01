@@ -34,24 +34,36 @@ suspend fun fileUpload(call: ApplicationCall) {
 
     if (filePart != null && fileName != null && userID != null) {
         val directory = File(Pathing.USER_FILE_DIRECTORY.value + "$userID")
-        if (!directory.exists()) {
-            createUserDir(userID)
+        if (!directory.exists() && !directory.mkdirs()) {
+            call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to "Failed to create user directory"))
+            return
         }
 
         val filePath = Paths.get(directory.absolutePath, fileName)
         val publicKey = getPublicKey(userID)
 
         if (publicKey != null) {
-            val encryptedOutputStream = ByteArrayOutputStream()
-            encryptFileStream(publicKey, filePath.inputStream(), encryptedOutputStream)
-            withContext(Dispatchers.IO) {
-                Files.write(filePath, encryptedOutputStream.toByteArray())
+            try {
+                val encryptedOutputStream = ByteArrayOutputStream()
+                encryptFileStream(publicKey, filePath.inputStream(), encryptedOutputStream)
+                withContext(Dispatchers.IO) {
+                    Files.write(filePath, encryptedOutputStream.toByteArray())
+                }
+            } catch (e: Exception) {
+                val file = File(filePath.toString())
+                if (file.exists()) {
+                    file.delete()
+                }
 
             }
+
             call.respond(HttpStatusCode.OK, mapOf("Response" to "File Upload Success!"))
         } else {
             call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid request parameters"))
         }
+
+    } else {
+        call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid Request"))
     }
 }
 
@@ -67,12 +79,17 @@ suspend fun fileDownload(call: ApplicationCall) {
         val filePath: Path? = Paths.get(directory.absolutePath, fileID.toString())
         if (filePath != null && Files.exists(filePath)) {
             withContext(Dispatchers.IO) {
-
-                Files.newInputStream(filePath).use { inputStream ->
-                    call.respondOutputStream(ContentType.Application.OctetStream, HttpStatusCode.OK) {
-                        inputStream.copyTo(this)
+                try{
+                    Files.newInputStream(filePath).use { inputStream ->
+                        call.respondOutputStream(ContentType.Application.OctetStream, HttpStatusCode.OK) {
+                            inputStream.copyTo(this)
+                        }
                     }
+                }catch (e: Exception){
+                    call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to "Failed to download file"))
                 }
+
+
             }
 
         } else call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Could not find file at specified path"))
@@ -80,7 +97,6 @@ suspend fun fileDownload(call: ApplicationCall) {
     } else run {
         call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid request parameters"))
     }
-
 
 }
 
@@ -126,11 +142,11 @@ suspend fun overLimit(inputStream: InputStream): Boolean {
             inputStream.read(buffer)
         }.also { bytesRead = it } != -1) {
         totalSize += bytesRead
-       if (totalSize > byteLimit){
-         return true
+        if (totalSize > byteLimit) {
+            return true
 
 
-       }
+        }
     }
 
     return totalSize > byteLimit

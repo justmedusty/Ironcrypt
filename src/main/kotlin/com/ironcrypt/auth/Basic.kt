@@ -1,4 +1,4 @@
-package com.ironcrypt.plugins
+package com.ironcrypt.auth
 
 import io.ktor.server.application.*
 import io.ktor.server.auth.*

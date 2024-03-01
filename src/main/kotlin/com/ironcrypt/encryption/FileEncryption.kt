@@ -18,7 +18,7 @@ fun encryptFileStream(publicKey: String, inputStream: InputStream, outputStream:
             ProducerOptions.encrypt(
                 EncryptionOptions().addRecipient(publicKeyObj)
                     .overrideEncryptionAlgorithm(SymmetricKeyAlgorithm.AES_192)
-            ).setAsciiArmor(true)
+            ).setAsciiArmor(false)
         ) // Ascii armor or not
 
     // Pipe the input stream to the encryption stream

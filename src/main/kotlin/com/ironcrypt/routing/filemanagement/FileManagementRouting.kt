@@ -3,6 +3,8 @@ package com.ironcrypt.routing.filemanagement
 import com.ironcrypt.database.deleteFile
 import com.ironcrypt.database.getOwnerId
 import com.ironcrypt.enums.Maximums.MAX_FILE_NAME_CHAR_LENGTH
+import com.ironcrypt.fileio.fileDownload
+import com.ironcrypt.fileio.fileUpload
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -18,52 +20,9 @@ private fun validateFileName(originalFileName: String?): String =
 fun Application.configureFileManagementRouting() {
     routing {
         authenticate("jwt") {
-            /*
             post("/ironcrypt/file/upload") {
-                val multiPartData = call.receiveMultipart()
-                val ownerId = this.call.principal<JWTPrincipal>()?.payload?.subject
-                val userPublicKey = getPublicKey(getUserName(ownerId.toString()).toString())
-                var fileName: String? = null
-                var fileBytes: ByteArray? = null
-                validateFileName(fileName)
-
-
-
-                multiPartData.forEachPart { part ->
-                    when (part) {
-                        is PartData.FormItem -> {
-                            if (part.name == "file_name") {
-                                fileName = part.value
-                                validateFileName(fileName)
-                            }
-                        }
-
-                        is PartData.FileItem -> {
-                            fileBytes = part.streamProvider().readBytes()
-                        }
-
-                        else -> {
-                            throw IOException("Error reading file")
-                        }
-
-                    }
-                    part.dispose()
-                }
-                if (fileBytes != null && (fileBytes?.size!! > Maximums.MAX_FILE_SIZE_BYTES.value)) {
-                    call.respond(
-                        HttpStatusCode.BadRequest, mapOf("Response" to "File exceeds maximum allowed size (1GB)")
-                    )
-                }
-                if (fileName != null && fileBytes != null && ownerId != null && userPublicKey != null) {
-                    val encryptedFile: ByteArray = encryptFile(userPublicKey, fileBytes!!)
-                    uploadFile(
-                        ownerId.toInt(), fileName!!, encryptedFile
-                    )
-                    call.respond(HttpStatusCode.OK, mapOf("Response" to "File Uploaded Successfully"))
-                } else {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Missing file or file name"))
-                }
-*/
+                fileUpload(this.call)
+            }
         }
         delete("/ironcrypt/file/delete/{fileId}") {
             val fileId = call.parameters["fileId"]?.toIntOrNull()
@@ -81,39 +40,10 @@ fun Application.configureFileManagementRouting() {
             } else {
                 call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid file ID or owner ID"))
             }
-        }/*
-            get("/ironcrypt/file/download/{fileId}"){
-                val fileId = call.parameters["fileId"]?.toIntOrNull()
-                val ownerId: Int? = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
-                if (fileId != null && ownerId != null) {
-                    val fileOwnerId: Int? = getOwnerId(fileId)
-                    if (fileOwnerId == ownerId) {
-                        val file: File? = getFileData(fileId)
-                        if (file != null) {
-                            val fileBytes: ByteArray? = downloadFile(fileId)
-                            if (fileBytes != null) {
-                                call.respondBytes(fileBytes, ContentType.Application.OctetStream, file.fileName)
-                            } else {
-                                call.respond(HttpStatusCode.NotFound, mapOf("Response" to "File not found"))
-                            }
-
-                            }
-                        }
-                        } else {
-                            call.respond(HttpStatusCode.NotFound, mapOf("Response" to "File not found"))
-                        }
-                    } else {
-                        call.respond(
-                            HttpStatusCode.BadRequest,
-                            mapOf("Response" to "You are not authorized to download this file")
-                        )
-                    }
-                } else {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("Response" to "Invalid file ID or owner ID"))
-                }
-
-            }
-*/
+        }
+        get("/ironcrypt/file/download/{fileId}") {
+            fileDownload(this.call)
+        }
     }
 
 

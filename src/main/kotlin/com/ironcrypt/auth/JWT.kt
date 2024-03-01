@@ -1,3 +1,5 @@
+package com.ironcrypt.auth
+
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import io.ktor.server.application.*
@@ -9,8 +11,8 @@ import io.ktor.server.auth.jwt.*
 fun Application.configureJWT(){
     val jwtAudience = "jwt-audience"
     val jwtDomain = "https://jwt-provider-domain/"
-    val jwtRealm = "ktor sample app"
-    val jwtSecret = "secret"
+    val jwtRealm = "ironcrrypt"
+    val jwtSecret = System.getenv("JWT_SECRET")
     authentication {
         jwt {
             realm = jwtRealm

@@ -1,9 +1,14 @@
 package com.ironcrypt
 
+import com.ironcrypt.auth.configureBasic
 import com.ironcrypt.configuration.configureDatabase
 import com.ironcrypt.configuration.configureSerialization
 import com.ironcrypt.plugins.*
-import configureJWT
+import com.ironcrypt.routing.filemanagement.configureFileManagementRouting
+import com.ironcrypt.auth.configureJWT
+import configureKeyManagementRouting
+import configureLogin
+import configureProfileChangeRoutes
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -19,4 +24,8 @@ fun Application.module() {
     configureSerialization()
     configureDatabase()
     configureJWT()
+    configureProfileChangeRoutes()
+    configureKeyManagementRouting()
+    configureFileManagementRouting()
+    configureLogin()
 }

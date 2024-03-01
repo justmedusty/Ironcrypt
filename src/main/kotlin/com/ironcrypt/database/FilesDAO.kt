@@ -11,14 +11,13 @@ object Files : Table(name = "Files") {
     val ownerId: Column<Int> = integer("owner_id").references(Users.id, onDelete = ReferenceOption.CASCADE)
     val fileName: Column<String> = varchar("fileName", 255)
     val fileSizeBytes: Column<Int> = integer("file_size_bytes")
-    val fileExtension: Column<String> = text("file_extension")
 
     override val primaryKey = PrimaryKey(id)
 
 }
 
 data class File(
-    val fileId: Int, val ownerId: Int, val fileName: String, val fileExtension: String, val fileSizeBytes: Int
+    val fileId: Int, val ownerId: Int, val fileName: String,  val fileSizeBytes: Int
 )
 
 fun verifyUsersSpace(ownerId: Int): Boolean {
@@ -32,10 +31,9 @@ fun verifyUsersSpace(ownerId: Int): Boolean {
         return false
     }
 
-}
-
-fun uploadFile(ownerId: Int, fileName: String, encryptedFile: ByteArray) {
-    if (fileName.toCharArray().size > 255 || encryptedFile.size > Maximums.MAX_FILE_SIZE_BYTES.value) {
+}/*
+fun uploadFile(ownerId: Int, fileName: String, fileSizeBytes: Int) {
+    if (fileName.toCharArray().size > 255) {
         logger.error { "Exceeded maximum filesize or file name length" }
         throw IllegalArgumentException("Exceeded maximum filesize or file name length")
     } else {
@@ -59,6 +57,7 @@ fun uploadFile(ownerId: Int, fileName: String, encryptedFile: ByteArray) {
     }
 
 }
+ */
 
 fun deleteFile(fileId: Int) {
     try {
@@ -98,7 +97,6 @@ fun getAllFiles(ownerId: Int): List<File>? {
                     it[Files.id],
                     it[Files.ownerId],
                     it[Files.fileName],
-                    it[Files.fileExtension],
                     it[Files.fileSizeBytes]
                 )
             }
@@ -119,7 +117,6 @@ fun getFileData(fileId: Int): File? {
                     row[Files.id],
                     row[Files.ownerId],
                     row[Files.fileName],
-                    row[Files.fileExtension],
                     row[Files.fileSizeBytes]
                 )
             }
