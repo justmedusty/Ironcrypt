@@ -38,7 +38,7 @@ suspend fun fileDownload(call: ApplicationCall) {
 
 }
 
-fun createFilePath(fileID: Int): File {
+private fun createFilePath(fileID: Int): File {
     val fileMetaData: com.ironcrypt.database.File? = getFileData(fileID)
     val directory = File(Pathing.USER_FILE_DIRECTORY.value + "$fileMetaData.userID")
     if (!directory.exists()) {
@@ -47,7 +47,7 @@ fun createFilePath(fileID: Int): File {
     return directory
 }
 
-suspend fun handleDownload(call: ApplicationCall, filePath: Path) {
+private suspend fun handleDownload(call: ApplicationCall, filePath: Path) {
     if (Files.exists(filePath)) {
         try {
             withContext(Dispatchers.IO) {
@@ -64,7 +64,7 @@ suspend fun handleDownload(call: ApplicationCall, filePath: Path) {
 
 }
 
-suspend fun isFileOwner(call: ApplicationCall, ownerId: Int, fileId: Int) {
+private suspend fun isFileOwner(call: ApplicationCall, ownerId: Int, fileId: Int) {
     val fileOwner: Int? = getOwnerId(fileId)
     if (fileOwner != ownerId) {
         call.respond(HttpStatusCode.Unauthorized, mapOf("Response" to NOT_OWNER))
