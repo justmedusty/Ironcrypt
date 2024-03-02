@@ -14,7 +14,7 @@ fun Application.configureJWT(){
     val jwtRealm = "ironcrrypt"
     val jwtSecret = System.getenv("JWT_SECRET")
     authentication {
-        jwt {
+        jwt("jwt") {
             realm = jwtRealm
             verifier(
                 JWT

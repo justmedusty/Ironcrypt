@@ -45,4 +45,5 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("org.mindrot:jbcrypt:0.4")
     implementation("io.github.microutils:kotlin-logging:3.0.5")
+    implementation("io.ktor:ktor-server-status-pages-jvm")
 }

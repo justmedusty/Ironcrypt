@@ -9,7 +9,7 @@ import org.mindrot.jbcrypt.BCrypt
 
 val logger = KotlinLogging.logger { }
 
-object Users : Table(name = "com.ironcrypt.database.Users") {
+object Users : Table(name = "Users") {
     val id: Column<Int> = integer("id").autoIncrement()
     val userName: Column<String> = varchar("user_name", 45).uniqueIndex()
     val publicKey: Column<String?> = text("public_key").uniqueIndex().nullable()
