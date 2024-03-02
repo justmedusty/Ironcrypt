@@ -35,10 +35,10 @@ fun Application.configureLogin() {
                 val userName = principal.name
                 val token = (createJWT(
                     JWTConfig(
-                        "encryptix-user",
+                        "ironcrypt-user",
                         "https://jwt-provider-domain/",
                         System.getenv("JWT_SECRET"),
-                        getUserId(userName),
+                        getUserId(getUserId(userName).toString()),
                         900000,
                     ),
                 ))
