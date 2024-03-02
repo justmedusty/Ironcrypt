@@ -15,11 +15,11 @@ import io.ktor.server.routing.*
 /**
  * Signup
  *
- * @property userName
+ * @property username
  * @property password
  * @constructor Create empty Signup
  */
-data class Signup(val userName: String, val password: String)
+data class Signup(val username: String, val password: String)
 
 /**
  * Configure login
@@ -48,7 +48,7 @@ fun Application.configureLogin() {
         }
         post("/ironcrypt/signup") {
             val signup = call.receive<Signup>()
-            val user = User(signup.userName, null.toString(), signup.password, false)
+            val user = User(signup.username, "null", signup.password,false)
             when {
                 user.userName.length < 6 || user.userName.length > 45 -> {
                     call.respond(
@@ -57,7 +57,7 @@ fun Application.configureLogin() {
                     )
                 }
 
-                userNameAlreadyExists(signup.userName) -> {
+                userNameAlreadyExists(signup.username) -> {
                     call.respond(
                         HttpStatusCode.Conflict,
                         mapOf("Response" to "This username is taken, please try another")
