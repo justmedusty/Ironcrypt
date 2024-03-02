@@ -1,3 +1,4 @@
+import com.ironcrypt.database.deleteFile
 import com.ironcrypt.database.getOwnerId
 import com.ironcrypt.database.logger
 import com.ironcrypt.enums.Pathing
@@ -32,6 +33,7 @@ suspend fun fileDeletion(call: ApplicationCall) {
             withContext(Dispatchers.IO) {
                 try {
                     Files.delete(Path.of(filePath))
+                    deleteFile(fileID)
                     call.respond(HttpStatusCode.OK, mapOf("Response" to DELETE_SUCCESS))
                 } catch (e: Exception) {
                     logger.error { "Error deleting file, ${e.message}" }

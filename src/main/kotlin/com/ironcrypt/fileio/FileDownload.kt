@@ -26,7 +26,7 @@ suspend fun fileDownload(call: ApplicationCall) {
         if (ownerId != null) {
             isFileOwner(call, ownerId, fileID)
         }
-        val filePath: Path? = createFilePath(fileID).toPath()
+        val filePath: Path? = createFilePath(fileID)?.toPath()
         if (filePath != null) {
             createFilePath(fileID)
             handleDownload(call, filePath)
@@ -38,11 +38,11 @@ suspend fun fileDownload(call: ApplicationCall) {
 
 }
 
-private fun createFilePath(fileID: Int): File {
+private fun createFilePath(fileID: Int): File? {
     val fileMetaData: com.ironcrypt.database.File? = getFileData(fileID)
     val directory = File(Pathing.USER_FILE_DIRECTORY.value + "$fileMetaData.userID")
     if (!directory.exists()) {
-        directory.mkdirs()
+        return null
     }
     return directory
 }
