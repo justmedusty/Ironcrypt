@@ -35,6 +35,7 @@ private const val NOT_OWNER = "You are not the owner of this file"
 private const val CONTENT_LENGTH_NULL = "Content Length null"
 private const val NAME_TOO_LONG = "File name too long, must be < 500 chars"
 private const val NAME_NOT_FOUND = "File name null"
+private const val BINARY_NOT_SUPPORTED = "Binary data not supported, please use form data"
 
 fun Application.configureFileManagementRouting() {
     routing {
@@ -50,7 +51,7 @@ fun Application.configureFileManagementRouting() {
 
                 if (contentLength != null) {
                     when {
-                        contentLength.toInt() > Maximums.MAX_FILE_SIZE_BYTES.value -> {
+                        contentLength > Maximums.MAX_FILE_SIZE_BYTES.value.toLong() -> {
                             call.respond(HttpStatusCode.PayloadTooLarge, mapOf("Response" to FILE_TOO_LARGE))
                         }
                     }
@@ -81,18 +82,31 @@ fun Application.configureFileManagementRouting() {
                                 call.respond(HttpStatusCode.PayloadTooLarge, mapOf("Response" to FILE_TOO_LARGE))
                                 return@forEachPart
                             }
-
                             val file =
                                 java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId.toString() + "/$name" + ".gpg")
-                            file.outputStream().use { outputStream ->
-                                val encryptedOutputStream = ByteArrayOutputStream()
-                                encryptFileStream(
-                                    getPublicKey(userId).toString(), part.streamProvider(), outputStream
+                            try {
+                                file.outputStream().use { outputStream ->
+                                    val encryptedOutputStream = ByteArrayOutputStream()
+                                    encryptFileStream(
+                                        getPublicKey(userId).toString(), part.streamProvider(), outputStream
+                                    )
+                                    encryptedOutputStream.writeTo(outputStream)
+                                    addFileData(userId, name, contentLength.toInt(), this.call)
+                                    call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
+                                }
+                            } catch (e: Exception) {
+                                val fileId: Int = getFileId(name, contentLength.toInt())!!
+                                deleteFile(fileId)
+                                file.delete()
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("Response" to "Error occurred, deleting file")
                                 )
-                                encryptedOutputStream.writeTo(outputStream)
-                                addFileData(userId, name, contentLength.toInt(), this.call)
-                                call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
                             }
+
+
+                        } else {
+                            call.respond(HttpStatusCode.BadRequest, BINARY_NOT_SUPPORTED)
                         }
                         part.dispose()
                     }

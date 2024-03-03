@@ -7,6 +7,7 @@ import io.ktor.server.response.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.statements.DeleteStatement.Companion.where
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object Files : Table(name = "Files") {
@@ -68,6 +69,20 @@ suspend fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int, call
 
 }
 
+fun getFileId(fileName: String, fileSizeBytes: Int): Int? {
+    return try {
+        transaction {
+            // Make sure to select the fileId from the table
+            Files.select {
+                (Files.fileName eq fileName) and (Files.fileSizeBytes eq fileSizeBytes)
+            }.singleOrNull() // Using singleOrNull to handle cases where no record is found
+                ?.get(Files.id)
+        }
+    } catch (e: ExposedSQLException) {
+        logger.error { e }
+        null
+    }
+}
 
 fun deleteFile(fileId: Int) {
     try {
