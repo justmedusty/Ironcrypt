@@ -32,6 +32,9 @@ private const val DOWNLOAD_FAILURE = "Download failure"
 private const val ERROR_ON_DELETION = "Error deleting file"
 private const val DELETE_SUCCESS = "Success Deleting File"
 private const val NOT_OWNER = "You are not the owner of this file"
+private const val CONTENT_LENGTH_NULL = "Content Length null"
+private const val NAME_TOO_LONG = "File name too long, must be < 500 chars"
+private const val NAME_NOT_FOUND = "File name null"
 
 fun Application.configureFileManagementRouting() {
     routing {
@@ -46,11 +49,11 @@ fun Application.configureFileManagementRouting() {
                 }
 
                 if (contentLength != null) {
-                    if (contentLength.toInt() > Maximums.MAX_FILE_SIZE_BYTES.value) {
-                        call.respond(HttpStatusCode.PayloadTooLarge, mapOf("Response" to FILE_TOO_LARGE))
+                    when {
+                        contentLength.toInt() > Maximums.MAX_FILE_SIZE_BYTES.value -> {
+                            call.respond(HttpStatusCode.PayloadTooLarge, mapOf("Response" to FILE_TOO_LARGE))
+                        }
                     }
-
-
                 }
                 val multipart = call.receiveMultipart()
                 if (userId != null) {
@@ -58,27 +61,38 @@ fun Application.configureFileManagementRouting() {
                         if (part is PartData.FileItem) {
 
                             val name = part.originalFileName
-                            if (name != null && contentLength != null) {
 
-
-                                val file =
-                                    java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId.toString() + "/$name" + ".gpg")
-                                file.outputStream().use { outputStream ->
-                                    val encryptedOutputStream = ByteArrayOutputStream()
-                                    encryptFileStream(
-                                        getPublicKey(userId).toString(), part.streamProvider(), outputStream
-                                    )
-                                    encryptedOutputStream.writeTo(outputStream)
-                                    addFileData(userId, name, contentLength.toInt(), this.call)
-                                    call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
-
-
-                                }
-
-                            } else {
-                                call.respond(HttpStatusCode.Conflict, mapOf("Response" to INVALID_REQUEST))
+                            if (name == null) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("Response" to NAME_NOT_FOUND))
+                                return@forEachPart
                             }
 
+                            if (contentLength == null) {
+                                call.respond(HttpStatusCode.Conflict, mapOf("Response" to INVALID_REQUEST))
+                                return@forEachPart
+                            }
+
+                            if (name.length > 500) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("Response" to NAME_TOO_LONG))
+                                return@forEachPart
+                            }
+
+                            if (contentLength.toInt() > Maximums.MAX_FILE_SIZE_BYTES.value) {
+                                call.respond(HttpStatusCode.PayloadTooLarge, mapOf("Response" to FILE_TOO_LARGE))
+                                return@forEachPart
+                            }
+
+                            val file =
+                                java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId.toString() + "/$name" + ".gpg")
+                            file.outputStream().use { outputStream ->
+                                val encryptedOutputStream = ByteArrayOutputStream()
+                                encryptFileStream(
+                                    getPublicKey(userId).toString(), part.streamProvider(), outputStream
+                                )
+                                encryptedOutputStream.writeTo(outputStream)
+                                addFileData(userId, name, contentLength.toInt(), this.call)
+                                call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
+                            }
                         }
                         part.dispose()
                     }
