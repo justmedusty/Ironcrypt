@@ -7,7 +7,6 @@ import io.ktor.server.response.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.statements.DeleteStatement.Companion.where
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object Files : Table(name = "Files") {
@@ -44,27 +43,30 @@ suspend fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int, call
     if (fileName.toCharArray().size > 500) {
         logger.error { "Exceeded maximum filesize or file name length" }
         throw IllegalArgumentException("Exceeded maximum filesize or file name length")
-    } else {
-        if (verifyUsersSpace(ownerId)) {
-            try {
-                transaction {
-                    Files.insert {
-                        it[Files.ownerId] = ownerId
-                        it[Files.fileName] = fileName
-                        it[Files.fileSizeBytes] = fileSizeBytes
-                    }
-                }
-            } catch (e: ExposedSQLException) {
-                logger.error { e }
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    mapOf("Response" to "Could not be inserted into database, is this a duplicate?")
-                )
+    }
+
+    if (!verifyUsersSpace(ownerId)) {
+        logger.error { "User out of space" }
+        call.respond(
+            HttpStatusCode.InsufficientStorage,
+            mapOf("Response" to "You have reached your maximum allowed file space")
+        )
+        return
+    }
+
+    try {
+        transaction {
+            Files.insert {
+                it[Files.ownerId] = ownerId
+                it[Files.fileName] = fileName
+                it[Files.fileSizeBytes] = fileSizeBytes
             }
-        } else {
-            logger.error { "Invalid user credentials given" }
-            throw IllegalArgumentException()
         }
+    } catch (e: ExposedSQLException) {
+        logger.error { e }
+        call.respond(
+            HttpStatusCode.BadRequest, mapOf("Response" to "Could not be inserted into database, is this a duplicate?")
+        )
     }
 
 }

@@ -165,7 +165,7 @@ fun Application.configureFileManagementRouting() {
                     val directory = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "$ownerId")
 
                     if (directory.exists() && fileMetaData != null) {
-                        val filePath = directory.resolve(fileMetaData.fileName).toPath()
+                        val filePath = directory.resolve(fileMetaData.fileName +".gpg").toPath()
                         if (Files.exists(filePath)) {
                             try {
                                 withContext(Dispatchers.IO) {
@@ -183,7 +183,7 @@ fun Application.configureFileManagementRouting() {
                 }
                 call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_REQUEST))
             }
-        }
+
 
         get("/ironcrypt/file/fetch") {
             val userId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
@@ -209,6 +209,6 @@ fun Application.configureFileManagementRouting() {
     }
 
 }
-
+}
 
 

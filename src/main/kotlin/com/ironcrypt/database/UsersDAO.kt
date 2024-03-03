@@ -140,7 +140,7 @@ fun createUser(user: User) {
             }
         }
     } catch (e: Exception) {
-        // logger.error { "Error creating user $e" }
+        logger.error { "Error creating user $e" }
     }
 }
 
