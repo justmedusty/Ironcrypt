@@ -36,6 +36,7 @@ private const val CONTENT_LENGTH_NULL = "Content Length null"
 private const val NAME_TOO_LONG = "File name too long, must be < 500 chars"
 private const val NAME_NOT_FOUND = "File name null"
 private const val BINARY_NOT_SUPPORTED = "Binary data not supported, please use form data"
+private const val NO_KEY = "No public key, cannot upload file"
 
 fun Application.configureFileManagementRouting() {
     routing {
@@ -44,6 +45,8 @@ fun Application.configureFileManagementRouting() {
                 val userId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
                 val directory = java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId)
                 val contentLength = call.request.contentLength()
+                val publicKey: String? = userId?.let { it1 -> getPublicKey(it1) }
+                val multipart = call.receiveMultipart()
 
                 if (!directory.exists()) {
                     directory.mkdirs()
@@ -56,7 +59,10 @@ fun Application.configureFileManagementRouting() {
                         }
                     }
                 }
-                val multipart = call.receiveMultipart()
+                if (publicKey == null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("Response" to NO_KEY))
+                }
+
                 if (userId != null) {
                     multipart.forEachPart { part ->
                         if (part is PartData.FileItem) {
@@ -95,12 +101,16 @@ fun Application.configureFileManagementRouting() {
                                     call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
                                 }
                             } catch (e: Exception) {
-                                val fileId: Int = getFileId(name, contentLength.toInt())!!
-                                deleteFile(fileId)
-                                file.delete()
+                                if (file.exists()) {
+                                    val fileId: Int? = getFileId(name, contentLength.toInt())
+                                    if (fileId != null) {
+                                        deleteFile(fileId)
+                                    }
+                                    file.delete()
+                                }
+
                                 call.respond(
-                                    HttpStatusCode.BadRequest,
-                                    mapOf("Response" to "Error occurred, deleting file")
+                                    HttpStatusCode.BadRequest, mapOf("Response" to "Error occurred, deleting file")
                                 )
                             }
 
@@ -165,7 +175,7 @@ fun Application.configureFileManagementRouting() {
                     val directory = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "$ownerId")
 
                     if (directory.exists() && fileMetaData != null) {
-                        val filePath = directory.resolve(fileMetaData.fileName +".gpg").toPath()
+                        val filePath = directory.resolve(fileMetaData.fileName + ".gpg").toPath()
                         if (Files.exists(filePath)) {
                             try {
                                 withContext(Dispatchers.IO) {
@@ -185,30 +195,30 @@ fun Application.configureFileManagementRouting() {
             }
 
 
-        get("/ironcrypt/file/fetch") {
-            val userId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
-            val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
-            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 25
-            if (userId != null) {
-                val files: List<File>? = getAllFiles(userId)
-                if (files?.isNotEmpty() == true) {
-                    call.respond(
-                        HttpStatusCode.OK, mapOf(
-                            page to page, limit to limit, files to files
+            get("/ironcrypt/file/fetch") {
+                val userId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
+                val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+                val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 25
+                if (userId != null) {
+                    val files: List<File>? = getAllFiles(userId)
+                    if (files?.isNotEmpty() == true) {
+                        call.respond(
+                            HttpStatusCode.OK, mapOf(
+                                page to page, limit to limit, files to files
+                            )
                         )
-                    )
-                } else {
-                    call.respond(HttpStatusCode.NotFound, mapOf("Response" to "No files found"))
+                    } else {
+                        call.respond(HttpStatusCode.NotFound, mapOf("Response" to "No files found"))
+                    }
+
                 }
-
+                call.respond(
+                    HttpStatusCode.Conflict, mapOf("Response" to "An error occurred, could not determine your identity")
+                )
             }
-            call.respond(
-                HttpStatusCode.Conflict, mapOf("Response" to "An error occurred, could not determine your identity")
-            )
         }
-    }
 
-}
+    }
 }
 
 

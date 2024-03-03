@@ -9,5 +9,5 @@ enum class Maximums (val value : Int) {
 
 enum class Pathing(val value : String){
     //USER_FILE_DIRECTORY("/var/ironcrypt/")
-    USER_FILE_DIRECTORY("C:/Users/Dustyn/Desktop/ironcrypt/")
+    USER_FILE_DIRECTORY(System.getenv("FILEPATH"))
 }
