@@ -16,7 +16,7 @@ fun createUserDir(userID: Int): Boolean {
 
 
 fun deleteUserDir(userID: Int) {
-    val directoryPath = Paths.get("/var/ironcrypt/$userID")
+    val directoryPath = Paths.get(Pathing.USER_FILE_DIRECTORY.value+ "$userID")
     try {
         Files.walkFileTree(directoryPath, object : SimpleFileVisitor<Path>() {
             override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
