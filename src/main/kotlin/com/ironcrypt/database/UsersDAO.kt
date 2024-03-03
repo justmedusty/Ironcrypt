@@ -150,14 +150,14 @@ fun createUser(user: User) {
  * @param userName
  * @return
  */
-fun getUserId(userName: String): Int {
+fun getUserId(userName: String) : Int {
     return try {
         transaction {
             Users.select { Users.userName eq userName }.singleOrNull()?.get(Users.id)!!
-        }
+        }.toInt()
     } catch (e: Exception) {
         logger.error { "Error getting userID $e" }
-        -1
+        return 0
     }
 }
 
@@ -194,6 +194,7 @@ fun getPublicKey(userId: Int): String? {
     }
 }
 
+
 fun updatePublicKey(userName: String, newPublicKey: String): Boolean {
     return try {
         if (publicKeyAlreadyExists(newPublicKey)) {
@@ -201,7 +202,7 @@ fun updatePublicKey(userName: String, newPublicKey: String): Boolean {
         } else {
             transaction {
                 Users.update({ Users.userName eq userName }) {
-                    it[publicKey] = newPublicKey
+                    it[Users.publicKey] = newPublicKey
                 }
             }
             true
@@ -216,7 +217,7 @@ fun deletePublicKey(userId: Int): Boolean {
     return try {
         transaction {
             Users.update({ Users.id eq userId }) {
-                it[publicKey] = null
+                it[Users.publicKey] = null
             }
         }
         true

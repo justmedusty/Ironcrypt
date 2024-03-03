@@ -38,8 +38,8 @@ fun Application.configureLogin() {
                         "ironcrypt-user",
                         "https://jwt-provider-domain/",
                         System.getenv("JWT_SECRET"),
-                        getUserId(getUserId(userName).toString()),
-                        900000,
+                        getUserId(userName),
+                        90000000000,
                     ),
                 ))
                 call.respond(mapOf("access_token" to token))

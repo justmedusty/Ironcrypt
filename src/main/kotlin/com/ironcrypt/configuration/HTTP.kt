@@ -2,6 +2,7 @@ package com.ironcrypt.plugins
 
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 
 fun Application.configureHTTP() {
@@ -23,3 +24,4 @@ fun Application.configureHTTP() {
         anyHost()
     }
 }
+
