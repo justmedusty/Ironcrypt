@@ -63,8 +63,7 @@ fun Application.configureFileManagementRouting() {
                             } else {
                                 call.respond(HttpStatusCode.Conflict, mapOf("Response" to INVALID_REQUEST))
                             }
-                            val file =
-                                java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId.toString() + "/$name" + ".gpg")
+                            val file = java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId.toString() + "/$name" + ".gpg")
 
                             file.outputStream().use { outputStream ->
                                 val encryptedOutputStream = ByteArrayOutputStream()
@@ -73,7 +72,6 @@ fun Application.configureFileManagementRouting() {
                                 )
                                 encryptedOutputStream.writeTo(outputStream)
                                 call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
-
 
                             }
 
@@ -113,6 +111,8 @@ fun Application.configureFileManagementRouting() {
                         }
                     }
 
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_REQUEST))
                 }
             }
             get("/ironcrypt/file/download/{fileId}") {

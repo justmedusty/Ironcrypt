@@ -33,7 +33,7 @@ fun verifyUsersSpace(ownerId: Int): Boolean {
 
 }
 
-fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int) {
+fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int){
     if (fileName.toCharArray().size > 500) {
         logger.error { "Exceeded maximum filesize or file name length" }
         throw IllegalArgumentException("Exceeded maximum filesize or file name length")
@@ -105,7 +105,6 @@ fun getAllFiles(ownerId: Int): List<File>? {
 
 
 }
-
 fun getFileData(fileId: Int): File? {
     return try {
         transaction {
