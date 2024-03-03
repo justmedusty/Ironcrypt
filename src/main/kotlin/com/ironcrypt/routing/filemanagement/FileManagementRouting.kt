@@ -59,20 +59,24 @@ fun Application.configureFileManagementRouting() {
 
                             val name = part.originalFileName
                             if (name != null && contentLength != null) {
-                                addFileData(userId, name, contentLength.toInt())
+
+
+                                val file =
+                                    java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId.toString() + "/$name" + ".gpg")
+                                file.outputStream().use { outputStream ->
+                                    val encryptedOutputStream = ByteArrayOutputStream()
+                                    encryptFileStream(
+                                        getPublicKey(userId).toString(), part.streamProvider(), outputStream
+                                    )
+                                    encryptedOutputStream.writeTo(outputStream)
+                                    addFileData(userId, name, contentLength.toInt(), this.call)
+                                    call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
+
+
+                                }
+
                             } else {
                                 call.respond(HttpStatusCode.Conflict, mapOf("Response" to INVALID_REQUEST))
-                            }
-                            val file = java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId.toString() + "/$name" + ".gpg")
-
-                            file.outputStream().use { outputStream ->
-                                val encryptedOutputStream = ByteArrayOutputStream()
-                                encryptFileStream(
-                                    getPublicKey(userId).toString(), part.streamProvider(), outputStream
-                                )
-                                encryptedOutputStream.writeTo(outputStream)
-                                call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
-
                             }
 
                         }
@@ -89,31 +93,39 @@ fun Application.configureFileManagementRouting() {
                 val params = call.parameters
                 val fileID: Int? = params["fileId"]?.toIntOrNull()
                 val ownerId: Int? = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
-                val filePath = Pathing.USER_FILE_DIRECTORY.value + "/$ownerId/$fileID"
+                val fileData: File? = fileID?.let { it1 -> getFileData(it1) }
+                if (fileData != null) {
+                    val filePath = Pathing.USER_FILE_DIRECTORY.value + "/$ownerId/${fileData.fileName}.gpg"
+                    if (ownerId != null) {
 
-                if (ownerId != null && fileID != null) {
+                        val fileOwner = getOwnerId(fileID)
 
-                    val fileOwner = getOwnerId(fileID)
+                        if (fileOwner != ownerId) {
+                            call.respond(HttpStatusCode.Unauthorized, mapOf("Response" to NOT_OWNER))
+                        } else {
+                            withContext(Dispatchers.IO) {
+                                try {
+                                    Files.delete(Path.of(filePath))
+                                    deleteFile(fileID)
+                                    call.respond(HttpStatusCode.OK, mapOf("Response" to DELETE_SUCCESS))
+                                } catch (e: Exception) {
+                                    logger.error { "Error deleting file, ${e.message}" }
+                                    call.respond(
+                                        HttpStatusCode.InternalServerError, mapOf("Response" to ERROR_ON_DELETION)
+                                    )
+                                }
 
-                    if (fileOwner != ownerId) {
-                        call.respond(HttpStatusCode.Unauthorized, mapOf("Response" to NOT_OWNER))
-                    } else {
-                        withContext(Dispatchers.IO) {
-                            try {
-                                Files.delete(Path.of(filePath))
-                                deleteFile(fileID)
-                                call.respond(HttpStatusCode.OK, mapOf("Response" to DELETE_SUCCESS))
-                            } catch (e: Exception) {
-                                logger.error { "Error deleting file, ${e.message}" }
-                                call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to ERROR_ON_DELETION))
                             }
-
                         }
-                    }
 
+                    } else {
+                        call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_REQUEST))
+                    }
                 } else {
-                    call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_REQUEST))
+                    call.respond(HttpStatusCode.NoContent, mapOf("Response" to "Error: File data null"))
                 }
+
+
             }
             get("/ironcrypt/file/download/{fileId}") {
                 val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()

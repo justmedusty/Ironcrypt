@@ -1,6 +1,9 @@
 package com.ironcrypt.database
 
 import com.ironcrypt.enums.Maximums
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.response.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -14,6 +17,9 @@ object Files : Table(name = "Files") {
 
     override val primaryKey = PrimaryKey(id)
 
+    init {
+        uniqueIndex(fileName, fileSizeBytes)
+    }
 }
 
 data class File(
@@ -33,7 +39,7 @@ fun verifyUsersSpace(ownerId: Int): Boolean {
 
 }
 
-fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int){
+suspend fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int, call: ApplicationCall) {
     if (fileName.toCharArray().size > 500) {
         logger.error { "Exceeded maximum filesize or file name length" }
         throw IllegalArgumentException("Exceeded maximum filesize or file name length")
@@ -49,6 +55,10 @@ fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int){
                 }
             } catch (e: ExposedSQLException) {
                 logger.error { e }
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("Response" to "Could not be inserted into database, is this a duplicate?")
+                )
             }
         } else {
             logger.error { "Invalid user credentials given" }
@@ -105,6 +115,7 @@ fun getAllFiles(ownerId: Int): List<File>? {
 
 
 }
+
 fun getFileData(fileId: Int): File? {
     return try {
         transaction {
