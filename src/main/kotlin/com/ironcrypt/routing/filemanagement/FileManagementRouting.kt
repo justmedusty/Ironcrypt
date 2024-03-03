@@ -131,38 +131,33 @@ fun Application.configureFileManagementRouting() {
                 val params = call.parameters
                 val fileID: Int? = params["fileId"]?.toIntOrNull()
                 val ownerId: Int? = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
-                val fileData: File? = fileID?.let { it1 -> getFileData(it1) }
-                if (fileData != null) {
-                    val filePath = Pathing.USER_FILE_DIRECTORY.value + "/$ownerId/${fileData.fileName}.gpg"
-                    if (ownerId != null) {
 
-                        val fileOwner = getOwnerId(fileID)
+                if (fileID == null || ownerId == null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_REQUEST))
+                }
 
-                        if (fileOwner != ownerId) {
-                            call.respond(HttpStatusCode.Unauthorized, mapOf("Response" to NOT_OWNER))
-                        } else {
-                            withContext(Dispatchers.IO) {
-                                try {
-                                    Files.delete(Path.of(filePath))
-                                    deleteFile(fileID)
-                                    call.respond(HttpStatusCode.OK, mapOf("Response" to DELETE_SUCCESS))
-                                } catch (e: Exception) {
-                                    logger.error { "Error deleting file, ${e.message}" }
-                                    call.respond(
-                                        HttpStatusCode.InternalServerError, mapOf("Response" to ERROR_ON_DELETION)
-                                    )
-                                }
-
-                            }
-                        }
-
-                    } else {
-                        call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_REQUEST))
-                    }
-                } else {
+                val fileData: File? = getFileData(fileID!!)
+                if (fileData == null) {
                     call.respond(HttpStatusCode.NoContent, mapOf("Response" to "Error: File data null"))
                 }
 
+                val filePath = "${Pathing.USER_FILE_DIRECTORY.value}/$ownerId/${fileData?.fileName}.gpg"
+                val fileOwner = getOwnerId(fileID)
+
+                if (fileOwner != ownerId) {
+                    call.respond(HttpStatusCode.Unauthorized, mapOf("Response" to NOT_OWNER))
+                }
+
+                withContext(Dispatchers.IO) {
+                    try {
+                        Files.delete(Path.of(filePath))
+                        deleteFile(fileID)
+                        call.respond(HttpStatusCode.OK, mapOf("Response" to DELETE_SUCCESS))
+                    } catch (e: Exception) {
+                        logger.error { "Error deleting file, ${e.message}" }
+                        call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to ERROR_ON_DELETION))
+                    }
+                }
 
             }
             get("/ironcrypt/file/download/{fileId}") {
