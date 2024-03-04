@@ -4,7 +4,6 @@ import com.ironcrypt.enums.Maximums
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
-import org.h2.mvstore.Page
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -49,8 +48,7 @@ suspend fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int, call
     if (!verifyUsersSpace(ownerId)) {
         logger.error { "User out of space" }
         call.respond(
-            HttpStatusCode.InsufficientStorage,
-            mapOf("Response" to "You have reached your maximum allowed file space")
+            HttpStatusCode.InsufficientStorage, mapOf("Response" to "You have reached your maximum allowed file space")
         )
         return
     }
@@ -117,15 +115,16 @@ fun getOwnerId(fileId: Int): Int? {
 }
 
 
-fun getAllFiles(ownerId: Int, limit : Int, page: Int): List<File>? {
-    val offset = (page -1 * limit)
+fun getAllFiles(ownerId: Int, limit: Int, page: Int): List<File>? {
+    val offset = (page - 1 * limit)
     return try {
         transaction {
-            Files.select { Files.ownerId eq ownerId}.limit(limit,offset.toLong()).orderBy(Files.id to SortOrder.DESC).map {
-                File(
-                    it[Files.id], it[Files.ownerId], it[Files.fileName], it[Files.fileSizeBytes]
-                )
-            }
+            Files.select { Files.ownerId eq ownerId }.limit(limit, offset.toLong()).orderBy(Files.id to SortOrder.DESC)
+                .map {
+                    File(
+                        it[Files.id], it[Files.ownerId], it[Files.fileName], it[Files.fileSizeBytes]
+                    )
+                }
         }
     } catch (e: ExposedSQLException) {
         logger.error { "Error fetching files ${e.message}" }

@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.math.log
 
 private fun validateFileName(originalFileName: String?): String =
     originalFileName?.takeUnless { it.length > MAX_FILE_NAME_CHAR_LENGTH.value } ?: ("file" + System.currentTimeMillis()
@@ -88,8 +89,7 @@ fun Application.configureFileManagementRouting() {
                                 call.respond(HttpStatusCode.PayloadTooLarge, mapOf("Response" to FILE_TOO_LARGE))
                                 return@forEachPart
                             }
-                            val file =
-                                java.io.File(Pathing.USER_FILE_DIRECTORY.value + "/$userId"  + "/$name" + ".gpg")
+                            val file = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "/$userId" + "/$name" + ".gpg")
                             try {
                                 file.outputStream().use { outputStream ->
                                     val encryptedOutputStream = ByteArrayOutputStream()
@@ -123,9 +123,6 @@ fun Application.configureFileManagementRouting() {
 
                 }
             }
-
-
-
 
             delete("/ironcrypt/file/delete/{fileId}") {
                 val params = call.parameters
@@ -164,10 +161,12 @@ fun Application.configureFileManagementRouting() {
                 val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
                 val parameters = call.parameters
                 val fileID = parameters["fileId"]?.toIntOrNull()
-
-                if (fileID != null && ownerId != null) {
+                logger.error { ownerId  }
+                logger.error { fileID }
+                logger.error { parameters }
+                if (fileID != null ) {
                     val fileMetaData: File? = getFileData(fileID)
-                    val directory = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "$ownerId")
+                    val directory = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "/$ownerId")
 
                     if (directory.exists() && fileMetaData != null) {
                         val filePath = directory.resolve(fileMetaData.fileName + ".gpg").toPath()
@@ -195,7 +194,7 @@ fun Application.configureFileManagementRouting() {
                 val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                 val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 25
                 if (userId != null) {
-                    val files: List<File>? = getAllFiles(userId)
+                    val files: List<File>? = getAllFiles(userId, limit, page)
                     if (files?.isNotEmpty() == true) {
                         call.respond(
                             HttpStatusCode.OK, mapOf(
