@@ -4,6 +4,7 @@ import com.ironcrypt.enums.Maximums
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
+import org.h2.mvstore.Page
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -116,10 +117,11 @@ fun getOwnerId(fileId: Int): Int? {
 }
 
 
-fun getAllFiles(ownerId: Int): List<File>? {
+fun getAllFiles(ownerId: Int, limit : Int, page: Int): List<File>? {
+    val offset = (page -1 * limit)
     return try {
         transaction {
-            Files.select { Files.ownerId eq ownerId }.map {
+            Files.select { Files.ownerId eq ownerId}.limit(limit,offset.toLong()).orderBy(Files.id to SortOrder.DESC).map {
                 File(
                     it[Files.id], it[Files.ownerId], it[Files.fileName], it[Files.fileSizeBytes]
                 )
