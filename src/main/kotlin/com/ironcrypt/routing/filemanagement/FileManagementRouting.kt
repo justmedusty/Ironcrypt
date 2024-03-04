@@ -89,7 +89,7 @@ fun Application.configureFileManagementRouting() {
                                 return@forEachPart
                             }
                             val file =
-                                java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId.toString() + "/$name" + ".gpg")
+                                java.io.File(Pathing.USER_FILE_DIRECTORY.value + "/$userId"  + "/$name" + ".gpg")
                             try {
                                 file.outputStream().use { outputStream ->
                                     val encryptedOutputStream = ByteArrayOutputStream()
