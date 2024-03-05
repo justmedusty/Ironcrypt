@@ -18,7 +18,6 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.math.log
 
 private fun validateFileName(originalFileName: String?): String =
     originalFileName?.takeUnless { it.length > MAX_FILE_NAME_CHAR_LENGTH.value } ?: ("file" + System.currentTimeMillis()
@@ -38,6 +37,7 @@ private const val NAME_TOO_LONG = "File name too long, must be < 500 chars"
 private const val NAME_NOT_FOUND = "File name null"
 private const val BINARY_NOT_SUPPORTED = "Binary data not supported, please use form data"
 private const val NO_KEY = "No public key, cannot upload file"
+private const val KEYLESS_FETCH = "You cannot use this application until you upload a public key."
 
 fun Application.configureFileManagementRouting() {
     routing {
@@ -161,10 +161,10 @@ fun Application.configureFileManagementRouting() {
                 val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
                 val parameters = call.parameters
                 val fileID = parameters["fileId"]?.toIntOrNull()
-                logger.error { ownerId  }
+                logger.error { ownerId }
                 logger.error { fileID }
                 logger.error { parameters }
-                if (fileID != null ) {
+                if (fileID != null) {
                     val fileMetaData: File? = getFileData(fileID)
                     val directory = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "/$ownerId")
 
@@ -194,6 +194,10 @@ fun Application.configureFileManagementRouting() {
                 val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                 val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 25
                 if (userId != null) {
+                    val publicKey: String? = getPublicKey(userId)
+                    if (publicKey.isNullOrEmpty()) {
+                        call.respond(HttpStatusCode.ExpectationFailed, mapOf("Response" to KEYLESS_FETCH))
+                    }
                     val files: List<File>? = getAllFiles(userId, limit, page)
                     if (files?.isNotEmpty() == true) {
                         call.respond(
@@ -205,14 +209,15 @@ fun Application.configureFileManagementRouting() {
                         call.respond(HttpStatusCode.NotFound, mapOf("Response" to "No files found"))
                     }
 
+                    call.respond(
+                        HttpStatusCode.Conflict,
+                        mapOf("Response" to "An error occurred, could not determine your identity")
+                    )
                 }
-                call.respond(
-                    HttpStatusCode.Conflict, mapOf("Response" to "An error occurred, could not determine your identity")
-                )
             }
+
         }
-
     }
+
+
 }
-
-
