@@ -48,19 +48,21 @@ fun Application.configureLogin() {
         }
         post("/ironcrypt/signup") {
             val signup = call.receive<Signup>()
-            val user = User(signup.username, "null", signup.password,false)
+            val user = User(signup.username, "null", signup.password, false)
             when {
                 user.userName.length < 6 || user.userName.length > 45 -> {
                     call.respond(
-                        HttpStatusCode.Conflict,
-                        mapOf("Response" to "Username must be between 6 and 45 characters")
+                        HttpStatusCode.Conflict, mapOf("Response" to "Username must be between 6 and 45 characters")
                     )
+                }
+
+                user.passwordHash.length < 8 -> {
+                    call.respond(HttpStatusCode.Conflict, mapOf("Response" to "Password must be at least 8 chars"))
                 }
 
                 userNameAlreadyExists(signup.username) -> {
                     call.respond(
-                        HttpStatusCode.Conflict,
-                        mapOf("Response" to "This username is taken, please try another")
+                        HttpStatusCode.Conflict, mapOf("Response" to "This username is taken, please try another")
                     )
                 }
 
