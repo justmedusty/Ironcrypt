@@ -116,10 +116,10 @@ fun getOwnerId(fileId: Int): Int? {
 
 
 fun getAllFiles(ownerId: Int, limit: Int, page: Int): List<File>? {
-    val offset = (page - 1 * limit)
+    val offset: Long = ((page - 1) * limit).toLong()
     return try {
         transaction {
-            Files.select { Files.ownerId eq ownerId }.limit(limit, offset.toLong()).orderBy(Files.id to SortOrder.DESC)
+            Files.select { Files.ownerId eq ownerId }.limit(limit, offset).orderBy(Files.id to SortOrder.DESC)
                 .map {
                     File(
                         it[Files.id], it[Files.ownerId], it[Files.fileName], it[Files.fileSizeBytes]
