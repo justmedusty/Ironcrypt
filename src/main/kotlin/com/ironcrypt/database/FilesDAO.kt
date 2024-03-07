@@ -46,6 +46,7 @@ suspend fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int, call
     }
 
     if (!verifyUsersSpace(ownerId)) {
+        setOverLimit(ownerId,true)
         logger.error { "User out of space" }
         call.respond(
             HttpStatusCode.InsufficientStorage, mapOf("Response" to "You have reached your maximum allowed file space")

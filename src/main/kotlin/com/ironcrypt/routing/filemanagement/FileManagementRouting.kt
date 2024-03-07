@@ -3,7 +3,6 @@ package com.ironcrypt.routing.filemanagement
 import com.ironcrypt.database.*
 import com.ironcrypt.encryption.encryptFileStream
 import com.ironcrypt.enums.Maximums
-import com.ironcrypt.enums.Maximums.MAX_FILE_NAME_CHAR_LENGTH
 import com.ironcrypt.enums.Pathing
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -19,10 +18,6 @@ import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 
-private fun validateFileName(originalFileName: String?): String =
-    originalFileName?.takeUnless { it.length > MAX_FILE_NAME_CHAR_LENGTH.value } ?: ("file" + System.currentTimeMillis()
-        .toString())
-
 private const val FAILED_CREATE_USER_DIR = "Failed to create user directory"
 private const val FILE_TOO_LARGE = "File too large (Max 1GB)"
 private const val INVALID_PARAM = "Invalid request parameters"
@@ -32,12 +27,12 @@ private const val DOWNLOAD_FAILURE = "Download failure"
 private const val ERROR_ON_DELETION = "Error deleting file"
 private const val DELETE_SUCCESS = "Success Deleting File"
 private const val NOT_OWNER = "You are not the owner of this file"
-private const val CONTENT_LENGTH_NULL = "Content Length null"
 private const val NAME_TOO_LONG = "File name too long, must be < 500 chars"
 private const val NAME_NOT_FOUND = "File name null"
 private const val BINARY_NOT_SUPPORTED = "Binary data not supported, please use form data"
 private const val NO_KEY = "No public key, cannot upload file"
 private const val KEYLESS_FETCH = "You cannot use this application until you upload a public key."
+private const val OVER_LIMIT = "You are over the allowed limit (2GB)"
 
 fun Application.configureFileManagementRouting() {
     routing {
@@ -50,7 +45,11 @@ fun Application.configureFileManagementRouting() {
                 val multipart = call.receiveMultipart()
 
                 if (!directory.exists()) {
-                    directory.mkdirs()
+                    try {
+                        directory.mkdirs()
+                    } catch (e: RuntimeException) {
+                        call.respond(HttpStatusCode.Conflict, mapOf("Response" to FAILED_CREATE_USER_DIR))
+                    }
                 }
 
                 if (contentLength != null) {
@@ -89,6 +88,11 @@ fun Application.configureFileManagementRouting() {
                                 call.respond(HttpStatusCode.PayloadTooLarge, mapOf("Response" to FILE_TOO_LARGE))
                                 return@forEachPart
                             }
+
+                            if (checkOverLimit(userId)) {
+                                call.respond(HttpStatusCode.InsufficientStorage, mapOf("Response" to OVER_LIMIT))
+                            }
+
                             val file = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "/$userId" + "/$name" + ".gpg")
                             try {
                                 file.outputStream().use { outputStream ->
@@ -128,6 +132,7 @@ fun Application.configureFileManagementRouting() {
                 val params = call.parameters
                 val fileID: Int? = params["fileId"]?.toIntOrNull()
                 val ownerId: Int? = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
+                val overLimit = ownerId?.let { it1 -> checkOverLimit(it1) }
 
                 if (fileID == null || ownerId == null) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_REQUEST))
@@ -149,6 +154,9 @@ fun Application.configureFileManagementRouting() {
                     try {
                         Files.delete(Path.of(filePath))
                         deleteFile(fileID)
+                        if (overLimit == true && !checkOverLimit(ownerId)) {
+                            setOverLimit(ownerId, false)
+                        }
                         call.respond(HttpStatusCode.OK, mapOf("Response" to DELETE_SUCCESS))
                     } catch (e: Exception) {
                         logger.error { "Error deleting file, ${e.message}" }

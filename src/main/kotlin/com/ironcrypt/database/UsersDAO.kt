@@ -285,7 +285,7 @@ fun checkOverLimit(id: Int): Boolean {
             overLimit ?: true
         }
     } catch (e: Exception) {
-        false
+        true
     }
 }
 fun setOverLimit(id : Int, isOverLimit : Boolean) {
@@ -297,7 +297,7 @@ fun setOverLimit(id : Int, isOverLimit : Boolean) {
 
         }
     }catch (e : ExposedSQLException){
-        logger.error { "Error occured setting over limit : ${e.message}" }
+        logger.error { "Error occurred setting over limit : ${e.message}" }
     }
 
 }
