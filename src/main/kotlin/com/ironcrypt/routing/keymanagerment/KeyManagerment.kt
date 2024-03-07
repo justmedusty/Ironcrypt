@@ -12,27 +12,39 @@ fun Application.configureKeyManagementRouting() {
     routing {
         authenticate("jwt") {
             post("/ironcrypt/key/upload") {
+
+
                 val postParams = call.receiveParameters()
                 val key: String = postParams["publicKey"] ?: ""
                 val principal = call.principal<JWTPrincipal>()
                 val username = getUserName(principal?.payload?.subject)
+
+
                 if (key.toByteArray().size > Maximums.MAX_PUBLIC_KEY_SIZE_BYTES.value) {
                     call.respond(
-                        HttpStatusCode.BadRequest,
-                        mapOf("Response" to "Public key exceeds maximum size (16kb)")
+                        HttpStatusCode.BadRequest, mapOf("Response" to "Public key exceeds maximum size (16kb)")
                     )
                 }
+
                 if (isValidOpenPGPPublicKey(key)) {
                     val success: Boolean = updatePublicKey(username.toString(), key)
+
                     if (success) {
+
                         call.respond(HttpStatusCode.OK, mapOf("Response" to "Public Key Successfully Created"))
+
                     } else {
+
                         call.respond(HttpStatusCode.Conflict, mapOf("Response" to "Public Key Already Exists"))
+
                     }
                 } else {
+
                     call.respond(HttpStatusCode.Conflict, mapOf("Response" to "Public key is not valid"))
+
                 }
             }
+
             get("/ironcrypt/key/getMyPublicKey") {
                 val principal = call.principal<JWTPrincipal>()
                 val id = principal?.payload?.subject

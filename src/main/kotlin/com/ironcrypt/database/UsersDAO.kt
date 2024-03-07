@@ -15,7 +15,6 @@ object Users : Table(name = "Users") {
     val userName: Column<String> = varchar("user_name", 45).uniqueIndex()
     val publicKey: Column<String?> = text("public_key").uniqueIndex().nullable()
     val passwordHash = text("password_hash")
-    val overLimit = bool("overLimit").default(false)
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -29,10 +28,7 @@ object Users : Table(name = "Users") {
  * @constructor Create empty User
  */
 data class User(
-    val userName: String,
-    val publicKey: String,
-    val passwordHash: String,
-    val overLimit : Boolean
+    val userName: String, val publicKey: String, val passwordHash: String, val overLimit: Boolean
 )
 
 /**
@@ -151,7 +147,7 @@ fun createUser(user: User) {
  * @param userName
  * @return
  */
-fun getUserId(userName: String) : Int {
+fun getUserId(userName: String): Int {
     return try {
         transaction {
             Users.select { Users.userName eq userName }.singleOrNull()?.get(Users.id)!!
@@ -203,7 +199,7 @@ fun updatePublicKey(userName: String, newPublicKey: String): Boolean {
         } else {
             transaction {
                 Users.update({ Users.userName eq userName }) {
-                    it[Users.publicKey] = newPublicKey
+                    it[publicKey] = newPublicKey
                 }
             }
             true
@@ -218,7 +214,7 @@ fun deletePublicKey(userId: Int): Boolean {
     return try {
         transaction {
             Users.update({ Users.id eq userId }) {
-                it[Users.publicKey] = null
+                it[publicKey] = null
             }
         }
         true
@@ -276,28 +272,4 @@ fun deleteUser(id: Int): Boolean {
         logger.error { "Error deleting user $e" }
         return false
     }
-}
-
-fun checkOverLimit(id: Int): Boolean {
-    return try {
-        transaction {
-            val overLimit = Users.select { Users.id eq id }.singleOrNull()?.get(Users.overLimit)
-            overLimit ?: true
-        }
-    } catch (e: Exception) {
-        true
-    }
-}
-fun setOverLimit(id : Int, isOverLimit : Boolean) {
-    try{
-        transaction {
-            Users.update({Users.id eq id}){
-                it[overLimit] = isOverLimit
-            }
-
-        }
-    }catch (e : ExposedSQLException){
-        logger.error { "Error occurred setting over limit : ${e.message}" }
-    }
-
 }

@@ -13,7 +13,7 @@ object Files : Table(name = "Files") {
     val id: Column<Int> = integer("id").autoIncrement()
     val ownerId: Column<Int> = integer("owner_id").references(Users.id, onDelete = ReferenceOption.CASCADE)
     val fileName: Column<String> = varchar("fileName", 500)
-    val fileSizeBytes: Column<Int> = integer("file_size_bytes")
+    val fileSizeBytes: Column<Long> = long("file_size_bytes")
 
     override val primaryKey = PrimaryKey(id)
 
@@ -23,7 +23,7 @@ object Files : Table(name = "Files") {
 }
 
 data class File(
-    val fileId: Int, val ownerId: Int, val fileName: String, val fileSizeBytes: Int
+    val fileId: Int, val ownerId: Int, val fileName: String, val fileSizeBytes: Long
 )
 
 fun verifyUsersSpace(ownerId: Int): Boolean {
@@ -31,47 +31,48 @@ fun verifyUsersSpace(ownerId: Int): Boolean {
         val spaceUsed = transaction {
             Files.select { Files.ownerId eq ownerId }.sumOf { it[Files.fileSizeBytes] }
         }
-
+        logger.error { spaceUsed <= Maximums.MAX_USER_SPACE_BYTES.value }
         return spaceUsed <= Maximums.MAX_USER_SPACE_BYTES.value
+
     } catch (e: ExposedSQLException) {
         return false
     }
 
 }
 
-suspend fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Int, call: ApplicationCall) {
+suspend fun addFileData(ownerId: Int, fileName: String, fileSizeBytes: Long, call: ApplicationCall) {
     if (fileName.toCharArray().size > 500) {
         logger.error { "Exceeded maximum filesize or file name length" }
         throw IllegalArgumentException("Exceeded maximum filesize or file name length")
     }
 
     if (!verifyUsersSpace(ownerId)) {
-        setOverLimit(ownerId,true)
         logger.error { "User out of space" }
         call.respond(
             HttpStatusCode.InsufficientStorage, mapOf("Response" to "You have reached your maximum allowed file space")
         )
-        return
+    } else {
+        try {
+            transaction {
+                Files.insert {
+                    it[Files.ownerId] = ownerId
+                    it[Files.fileName] = fileName
+                    it[Files.fileSizeBytes] = fileSizeBytes
+                }
+            }
+        } catch (e: ExposedSQLException) {
+            logger.error { e }
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("Response" to "Could not be inserted into database, is this a duplicate?")
+            )
+        }
     }
 
-    try {
-        transaction {
-            Files.insert {
-                it[Files.ownerId] = ownerId
-                it[Files.fileName] = fileName
-                it[Files.fileSizeBytes] = fileSizeBytes
-            }
-        }
-    } catch (e: ExposedSQLException) {
-        logger.error { e }
-        call.respond(
-            HttpStatusCode.BadRequest, mapOf("Response" to "Could not be inserted into database, is this a duplicate?")
-        )
-    }
 
 }
 
-fun getFileId(fileName: String, fileSizeBytes: Int): Int? {
+fun getFileId(fileName: String, fileSizeBytes: Long): Int? {
     return try {
         transaction {
             // Make sure to select the fileId from the table
@@ -120,8 +121,7 @@ fun getAllFiles(ownerId: Int, limit: Int, page: Int): List<File>? {
     val offset: Long = ((page - 1) * limit).toLong()
     return try {
         transaction {
-            Files.select { Files.ownerId eq ownerId }.limit(limit, offset).orderBy(Files.id to SortOrder.DESC)
-                .map {
+            Files.select { Files.ownerId eq ownerId }.limit(limit, offset).orderBy(Files.id to SortOrder.DESC).map {
                     File(
                         it[Files.id], it[Files.ownerId], it[Files.fileName], it[Files.fileSizeBytes]
                     )

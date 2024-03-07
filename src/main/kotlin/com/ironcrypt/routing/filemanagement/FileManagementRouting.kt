@@ -38,13 +38,17 @@ fun Application.configureFileManagementRouting() {
     routing {
         authenticate("jwt") {
             post("/ironcrypt/file/upload") {
+
+
                 val userId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
                 val directory = java.io.File(Pathing.USER_FILE_DIRECTORY.value + userId)
                 val contentLength = call.request.contentLength()
                 val publicKey: String? = userId?.let { it1 -> getPublicKey(it1) }
                 val multipart = call.receiveMultipart()
 
+
                 if (!directory.exists()) {
+
                     try {
                         directory.mkdirs()
                     } catch (e: RuntimeException) {
@@ -52,16 +56,20 @@ fun Application.configureFileManagementRouting() {
                     }
                 }
 
+
                 if (contentLength != null) {
                     when {
-                        contentLength > Maximums.MAX_FILE_SIZE_BYTES.value.toLong() -> {
+                        contentLength > Maximums.MAX_FILE_SIZE_BYTES.value -> {
                             call.respond(HttpStatusCode.PayloadTooLarge, mapOf("Response" to FILE_TOO_LARGE))
                         }
                     }
                 }
+
+
                 if (publicKey == null) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("Response" to NO_KEY))
                 }
+
 
                 if (userId != null) {
                     multipart.forEachPart { part ->
@@ -89,11 +97,9 @@ fun Application.configureFileManagementRouting() {
                                 return@forEachPart
                             }
 
-                            if (checkOverLimit(userId)) {
-                                call.respond(HttpStatusCode.InsufficientStorage, mapOf("Response" to OVER_LIMIT))
-                            }
-
                             val file = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "/$userId" + "/$name" + ".gpg")
+                            addFileData(userId, name, contentLength, this.call)
+
                             try {
                                 file.outputStream().use { outputStream ->
                                     val encryptedOutputStream = ByteArrayOutputStream()
@@ -101,12 +107,11 @@ fun Application.configureFileManagementRouting() {
                                         getPublicKey(userId).toString(), part.streamProvider(), outputStream
                                     )
                                     encryptedOutputStream.writeTo(outputStream)
-                                    addFileData(userId, name, contentLength.toInt(), this.call)
                                     call.respond(HttpStatusCode.OK, mapOf("Response" to FILE_UPLOAD_SUCCESS))
                                 }
                             } catch (e: Exception) {
                                 if (file.exists()) {
-                                    val fileId: Int? = getFileId(name, contentLength.toInt())
+                                    val fileId: Int? = getFileId(name, contentLength)
                                     if (fileId != null) {
                                         deleteFile(fileId)
                                     }
@@ -129,56 +134,72 @@ fun Application.configureFileManagementRouting() {
             }
 
             delete("/ironcrypt/file/delete/{fileId}") {
+
+
                 val params = call.parameters
                 val fileID: Int? = params["fileId"]?.toIntOrNull()
                 val ownerId: Int? = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
-                val overLimit = ownerId?.let { it1 -> checkOverLimit(it1) }
+
 
                 if (fileID == null || ownerId == null) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("Response" to INVALID_REQUEST))
                 }
 
+
                 val fileData: File? = getFileData(fileID!!)
+
+
                 if (fileData == null) {
+
                     call.respond(HttpStatusCode.NoContent, mapOf("Response" to "Error: File data null"))
                 }
 
+
                 val filePath = "${Pathing.USER_FILE_DIRECTORY.value}/$ownerId/${fileData?.fileName}.gpg"
                 val fileOwner = getOwnerId(fileID)
+
 
                 if (fileOwner != ownerId) {
                     call.respond(HttpStatusCode.Unauthorized, mapOf("Response" to NOT_OWNER))
                 }
 
+
                 withContext(Dispatchers.IO) {
+
                     try {
                         Files.delete(Path.of(filePath))
                         deleteFile(fileID)
-                        if (overLimit == true && !checkOverLimit(ownerId)) {
-                            setOverLimit(ownerId, false)
-                        }
+
                         call.respond(HttpStatusCode.OK, mapOf("Response" to DELETE_SUCCESS))
+
                     } catch (e: Exception) {
                         logger.error { "Error deleting file, ${e.message}" }
                         call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to ERROR_ON_DELETION))
                     }
+
                 }
 
             }
             get("/ironcrypt/file/download/{fileId}") {
+
+
                 val ownerId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
                 val parameters = call.parameters
                 val fileID = parameters["fileId"]?.toIntOrNull()
-                logger.error { ownerId }
-                logger.error { fileID }
-                logger.error { parameters }
+
+
                 if (fileID != null) {
                     val fileMetaData: File? = getFileData(fileID)
                     val directory = java.io.File(Pathing.USER_FILE_DIRECTORY.value + "/$ownerId")
 
+
                     if (directory.exists() && fileMetaData != null) {
                         val filePath = directory.resolve(fileMetaData.fileName + ".gpg").toPath()
+
+
                         if (Files.exists(filePath)) {
+
+
                             try {
                                 withContext(Dispatchers.IO) {
                                     Files.newInputStream(filePath)
@@ -187,6 +208,8 @@ fun Application.configureFileManagementRouting() {
                                         inputStream.copyTo(this)
                                     }
                                 }
+
+
                             } catch (e: Exception) {
                                 call.respond(HttpStatusCode.InternalServerError, mapOf("Response" to DOWNLOAD_FAILURE))
                             }
@@ -198,9 +221,12 @@ fun Application.configureFileManagementRouting() {
 
 
             get("/ironcrypt/file/fetch") {
+
                 val userId = call.principal<JWTPrincipal>()?.payload?.subject?.toIntOrNull()
                 val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                 val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 25
+
+
                 if (userId != null) {
                     val publicKey: String? = getPublicKey(userId)
                     if (publicKey.isNullOrEmpty()) {
