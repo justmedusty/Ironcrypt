@@ -2,6 +2,7 @@ package com.ironcrypt.database
 
 import com.ironcrypt.security.hashPassword
 import mu.KotlinLogging
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -275,4 +276,28 @@ fun deleteUser(id: Int): Boolean {
         logger.error { "Error deleting user $e" }
         return false
     }
+}
+
+fun checkOverLimit(id: Int): Boolean {
+    return try {
+        transaction {
+            val overLimit = Users.select { Users.id eq id }.singleOrNull()?.get(Users.overLimit)
+            overLimit ?: true
+        }
+    } catch (e: Exception) {
+        false
+    }
+}
+fun setOverLimit(id : Int, isOverLimit : Boolean) {
+    try{
+        transaction {
+            Users.update({Users.id eq id}){
+                it[overLimit] = isOverLimit
+            }
+
+        }
+    }catch (e : ExposedSQLException){
+        logger.error { "Error occured setting over limit : ${e.message}" }
+    }
+
 }

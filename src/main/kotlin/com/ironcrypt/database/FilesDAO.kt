@@ -18,7 +18,7 @@ object Files : Table(name = "Files") {
     override val primaryKey = PrimaryKey(id)
 
     init {
-        uniqueIndex(fileName, fileSizeBytes)
+        uniqueIndex(fileName, ownerId)
     }
 }
 
@@ -148,4 +148,3 @@ fun getFileData(fileId: Int): File? {
         return null
     }
 }
-
