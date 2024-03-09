@@ -6,6 +6,7 @@ import com.ironcrypt.configuration.configureSerialization
 import com.ironcrypt.plugins.*
 import com.ironcrypt.routing.filemanagement.configureFileManagementRouting
 import com.ironcrypt.auth.configureJWT
+import com.ironcrypt.configuration.configureRateLimiting
 import com.ironcrypt.configuration.configureRouting
 import configureKeyManagementRouting
 import configureLogin
@@ -30,4 +31,5 @@ fun Application.module() {
     configureFileManagementRouting()
     configureLogin()
     configureRouting()
+    configureRateLimiting()
 }
